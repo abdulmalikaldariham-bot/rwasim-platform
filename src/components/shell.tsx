@@ -104,8 +104,8 @@ export function Shell({
 
   const nav = (
     <nav className="flex h-full flex-col">
-      <div className="px-5 pt-6 pb-8">
-        <Link href="/">
+      <div className="border-b border-white/10 px-5 pt-7 pb-6 mb-4">
+        <Link href="/" className="block">
           <Wordmark />
         </Link>
       </div>
@@ -157,7 +157,7 @@ export function Shell({
     <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_1fr]">
       <aside className="no-print sticky top-0 hidden h-dvh overflow-y-auto bg-nav lg:block">{nav}</aside>
       <div className="no-print sticky top-0 z-30 flex items-center justify-between bg-nav px-4 py-3 lg:hidden">
-        <Wordmark />
+        <Wordmark compact />
         <button onClick={() => setOpen(true)} className="rounded-lg p-2 text-white" aria-label="القائمة">
           <Menu />
         </button>

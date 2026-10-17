@@ -1,21 +1,39 @@
-// شارة رواسم: طبقات رسوبية متراكبة (تصميم أصلي مؤقت حتى اعتماد شعار الجمعية)
-export function BrandMark({ size = 28 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
-      <rect x="3" y="5" width="26" height="5" rx="2.5" fill="#f09223" />
-      <rect x="6" y="13.5" width="23" height="5" rx="2.5" fill="#6fb3c2" />
-      <rect x="3" y="22" width="20" height="5" rx="2.5" fill="#cfe0e4" />
-    </svg>
-  );
+/* eslint-disable @next/next/no-img-element */
+// شعار جمعية رواسم: نسخة ملونة للخلفيات الفاتحة، ونسخة بيضاء للخلفيات الداكنة
+
+/** الشعار الكامل. light = على خلفية داكنة (نسخة بيضاء). onSurface = يتبدل تلقائيًا مع الوضع الليلي */
+export function Logo({ light = false, onSurface = false, className = '' }: { light?: boolean; onSurface?: boolean; className?: string }) {
+  if (onSurface) {
+    return (
+      <>
+        <img src="/brand/logo.png" alt="جمعية رواسم" className={`${className} dark:hidden`} />
+        <img src="/brand/logo-white.png" alt="جمعية رواسم" className={`${className} hidden dark:block`} />
+      </>
+    );
+  }
+  return <img src={light ? '/brand/logo-white.png' : '/brand/logo.png'} alt="جمعية رواسم" className={className} />;
 }
-export function Wordmark({ light = true }: { light?: boolean }) {
-  return (
-    <span className="flex items-center gap-2.5">
-      <BrandMark />
-      <span className="leading-tight">
-        <span className={light ? 'block text-lg font-bold text-white' : 'block text-lg font-bold text-ink'}>رواسم</span>
-        <span className={light ? 'block text-xs text-nav-text' : 'block text-xs text-muted'}>منصة الأداء المؤسسي</span>
+
+/** الشعار مع اسم المنصة. compact للشريط العلوي في الجوال */
+export function Wordmark({ light = true, compact = false }: { light?: boolean; compact?: boolean }) {
+  const sub = light ? 'text-nav-text' : 'text-muted';
+  if (compact) {
+    return (
+      <span className="flex items-center gap-3">
+        <Logo light={light} className="h-11 w-auto" />
+        <span className={`text-xs ${sub}`}>منصة الأداء المؤسسي</span>
       </span>
+    );
+  }
+  return (
+    <span className="flex flex-col items-center gap-3 text-center">
+      <Logo light={light} className="w-40 max-w-full" />
+      <span className={`text-sm font-medium ${sub}`}>منصة الأداء المؤسسي</span>
     </span>
   );
+}
+
+/** للتوافق مع أي استخدام قديم */
+export function BrandMark({ size = 28 }: { size?: number }) {
+  return <img src="/brand/icon.png" alt="" width={size} height={size} className="rounded" />;
 }
