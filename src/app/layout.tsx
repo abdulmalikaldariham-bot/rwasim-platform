@@ -5,7 +5,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: { default: 'رواسم | منصة الأداء المؤسسي', template: '%s — رواسم' },
   description: 'إدارة الخطط التنفيذية والتشغيلية ومتابعة الإنجاز وقياس الأداء في جمعية رواسم',
-  icons: { icon: '/icon.svg' },
+  icons: { icon: '/brand/icon.png', apple: '/brand/icon.png' },
   robots: { index: false, follow: false },
 };
 
