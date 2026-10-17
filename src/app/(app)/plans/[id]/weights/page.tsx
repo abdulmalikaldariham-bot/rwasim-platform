@@ -3,10 +3,10 @@ import { requireSession } from '@/lib/auth';
 import { deptName, getDepartments } from '@/lib/data/common';
 import { loadPlan } from '@/lib/data/plans';
 import { PageHeader } from '@/components/ui';
-import { WeightsEditor } from './weights-editor';
+import { WeightsEditor, type HistoryRow } from './weights-editor';
 import { PLAN_STATUS, QUARTER_LABEL } from '@/lib/labels';
 
-export const metadata = { title: 'توزيع الأوزان' };
+export const metadata = { title: 'إدارة الأوزان' };
 
 export default async function WeightsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,19 +17,20 @@ export default async function WeightsPage({ params }: { params: Promise<{ id: st
   const isEd = profile.role === 'executive_director';
   if (!isEd && profile.department_id !== plan.department_id) redirect(`/plans/${id}`);
   if (plan.status === 'archived' || plan.status === 'submitted') redirect(`/plans/${id}`);
-  const depts = await getDepartments(sb, true);
+  const [depts, { data: history }] = await Promise.all([getDepartments(sb, true), sb.rpc('get_weight_history', { p_plan: id, p_limit: 80 })]);
   return (
     <>
       <PageHeader
         back={{ href: `/plans/${id}`, label: 'صفحة الخطة' }}
-        title="توزيع الأوزان"
-        sub={`${deptName(depts, plan.department_id)} — ${QUARTER_LABEL[plan.quarter]} ${plan.year}م — ${PLAN_STATUS[plan.status]}`}
+        title="إدارة الأوزان"
+        sub={`${deptName(depts, plan.department_id)} — ${QUARTER_LABEL[plan.quarter]} ${plan.year}م — ${PLAN_STATUS[plan.status]}. وزّع 100٪ على المشاريع والأنشطة، ثم 100٪ على مهام كل منها.`}
       />
       <WeightsEditor
         planId={plan.id}
         quarter={plan.quarter}
         mode={plan.status === 'approved' ? (isEd ? 'direct' : 'request') : 'draft'}
         isEd={isEd}
+        history={(history ?? []) as HistoryRow[]}
         activities={activities.map((a) => ({
           id: a.id,
           title: a.title,

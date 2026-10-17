@@ -13,6 +13,7 @@ export interface Profile {
   department_id: string | null;
   job_title: string | null;
   is_active: boolean;
+  must_change_password?: boolean;
 }
 
 export const getSession = cache(async () => {

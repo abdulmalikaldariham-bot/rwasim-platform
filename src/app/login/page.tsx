@@ -5,7 +5,7 @@ import { LoginForm } from './login-form';
 
 export const metadata = { title: 'تسجيل الدخول' };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; inactive?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; inactive?: string; link?: string }> }) {
   const sp = await searchParams;
   const s = await getSession();
   if (s && s.profile.is_active) redirect(homeFor(s.profile.role));
@@ -18,6 +18,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </div>
           <h1 className="text-2xl font-bold text-ink">تسجيل الدخول</h1>
           <p className="mt-1 mb-8 text-sm text-muted">استخدم البريد الذي أضافه لك مسؤول النظام.</p>
+          {sp.link === 'invalid' && <p className="mb-4 rounded-xl bg-orange-soft px-3 py-2 text-sm text-late">رابط الإعداد غير صالح أو انتهت صلاحيته. اطلب رابطًا جديدًا من مسؤول النظام أو استخدم «نسيت كلمة المرور».</p>}
           {sp.inactive && <p className="mb-4 rounded-lg bg-stalled-soft px-3 py-2 text-sm text-stalled">هذا الحساب معطّل. تواصل مع مسؤول النظام.</p>}
           <LoginForm next={sp.next} />
         </div>

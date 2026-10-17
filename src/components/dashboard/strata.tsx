@@ -19,7 +19,7 @@ export function Strata({ org, names, hrefFor }: { org: OrgEval; names: Record<st
           <li key={d.departmentId}>
             <Link
               href={hrefFor(d)}
-              className="group relative block overflow-hidden rounded-lg border border-line bg-sunken transition hover:border-teal"
+              className="group relative block overflow-hidden rounded-2xl border border-line bg-sunken transition hover:border-teal"
             >
               {has && (
                 <div
@@ -35,7 +35,7 @@ export function Strata({ org, names, hrefFor }: { org: OrgEval; names: Record<st
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-ink">{names[d.departmentId]}</p>
                   <p className="text-xs text-muted">
-                    {has ? `${d.activitiesCompleted} من ${d.activitiesTotal} أنشطة مكتملة` : DATA_STATE[d.dataState]}
+                    {has ? `${d.activitiesCompleted} من ${d.activitiesTotal} مشاريع وأنشطة مكتملة · ${d.stepsCompleted}/${d.stepsTotal} مهام${d.stepsLate ? ` · ${d.stepsLate} متأخرة` : ''}` : DATA_STATE[d.dataState]}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">

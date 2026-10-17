@@ -24,7 +24,7 @@ export function ActivityFilters({ depts, showWeights }: { depts: { id: string; n
         }}
         className="flex-1 sm:max-w-xs"
       >
-        <input value={s} onChange={(e) => setS(e.target.value)} placeholder="ابحث في الأنشطة والخطوات والمسؤولين" className={`${sel} w-full px-3`} aria-label="بحث" />
+        <input value={s} onChange={(e) => setS(e.target.value)} placeholder="ابحث في المشاريع والأنشطة والمهام والمكلفين" className={`${sel} w-full px-3`} aria-label="بحث" />
       </form>
       {depts.length > 0 && (
         <select className={sel} value={sp.get('dept') ?? ''} onChange={(e) => set('dept', e.target.value || null)} aria-label="الإدارة">

@@ -8,16 +8,16 @@ import { Pill, ProgressBar, stateTone } from './ui';
 /** بطاقة النشاط الذكية */
 export function ActivityCard({ a, dept, href, showWeight }: { a: ActivityRow; dept: string; href: string; showWeight?: boolean }) {
   const tone = stateTone(a.eval.state);
-  const owners = [...new Set(a.steps.map((s) => s.assigneeName ?? s.responsible_text).filter(Boolean))];
+  const owners = [...new Set(a.steps.flatMap((s) => (s.assignees.length ? s.assignees.map((x) => x.name) : s.responsible_text ? [s.responsible_text] : [])))];
   const last = a.steps.map((s) => s.last_update_at).filter(Boolean).sort().at(-1) ?? null;
   const remaining = a.eval.stepsTotal - a.eval.stepsCompleted;
   return (
-    <Link href={href} className="group flex flex-col rounded-xl border border-line bg-surface p-4 transition hover:border-teal focus-visible:border-teal">
+    <Link href={href} className="card card-hover group flex flex-col p-4 focus-visible:border-teal">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="font-semibold leading-snug text-ink group-hover:text-teal">{a.title}</h3>
+          <h3 className="font-bold leading-snug text-ink group-hover:text-teal">{a.title}</h3>
           <p className="mt-0.5 text-xs text-muted">
-            {dept} — {KIND_LABELS[a.kind]}
+            {a.kind === 'project' ? 'مشروع' : 'نشاط'} · {dept} — {KIND_LABELS[a.kind]}
             {showWeight ? ` — الوزن ${fmtPct(a.weight)}` : ''}
           </p>
         </div>
@@ -28,14 +28,14 @@ export function ActivityCard({ a, dept, href, showWeight }: { a: ActivityRow; de
         <span className="num w-14 shrink-0 text-left text-lg font-bold text-ink">{fmtPct(a.eval.progress)}</span>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-y-1 text-sm">
-        <dt className="text-muted">الخطوات</dt>
+        <dt className="text-muted">المهام</dt>
         <dd className="text-left">
           <span className="num font-semibold text-done">{a.eval.stepsCompleted}</span> مكتملة، <span className="num">{remaining}</span> متبقية
           {a.eval.lateSteps > 0 && <span className="text-late"> ({a.eval.lateSteps} متأخرة)</span>}
         </dd>
         <dt className="text-muted">الموعد</dt>
         <dd className="text-left">{fmtDate(a.eval.dueDate)}</dd>
-        <dt className="text-muted">المسؤول</dt>
+        <dt className="text-muted">المكلفون</dt>
         <dd className="truncate text-left" title={owners.join('، ')}>
           {owners.slice(0, 2).join('، ') || '—'}
           {owners.length > 2 ? ` +${owners.length - 2}` : ''}

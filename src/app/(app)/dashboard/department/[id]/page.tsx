@@ -6,6 +6,7 @@ import { loadActivities } from '@/lib/data/plans';
 import { quarterCurve } from '@/lib/engine/progress';
 import { ActivityCard } from '@/components/activity-card';
 import { CurveChart } from '@/components/dashboard/curve';
+import { CountsPanel, countUnits } from '@/components/dashboard/counts';
 import { EmptyState, Notice, PageHeader, Panel, PanelHead, Pill, ProgressBar, stateTone } from '@/components/ui';
 import { PeriodPicker } from '@/components/period-picker';
 import { DATA_STATE, PLAN_STATUS, QUARTER_LABEL } from '@/lib/labels';
@@ -63,9 +64,10 @@ export default async function DepartmentDrill({ params, searchParams }: { params
               </div>
             </Panel>
           </div>
+          <CountsPanel c={countUnits([d])} />
           {visibleActs.length ? (
             <section>
-              <h2 className="mb-3 text-lg font-bold text-ink">الأنشطة</h2>
+              <h2 className="mb-3 text-lg font-bold text-ink">المشاريع والأنشطة</h2>
               <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
                 {visibleActs.map((a) => (
                   <ActivityCard key={a.id} a={a} dept={dept.short_name ?? dept.name} href={`/activities/${a.id}`} />

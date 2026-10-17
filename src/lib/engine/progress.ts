@@ -21,6 +21,7 @@ import type {
   StepEval,
   StepFact,
   StepStatus,
+  StepTiming,
   WeekBoundary,
 } from './types';
 
@@ -79,7 +80,13 @@ export function todayISO(now: Date = new Date()): string {
   return f.format(now);
 }
 
-export function stepWindow(weeks: number[], boundaries: WeekBoundary[]): { start: string | null; end: string | null } {
+export function stepWindow(
+  weeks: number[],
+  boundaries: WeekBoundary[],
+  dates?: { start?: string | null; end?: string | null },
+): { start: string | null; end: string | null } {
+  // التاريخان المعتمدان للمهمة لهما الأولوية، ثم نافذة الجدولة الأسبوعية
+  if (dates?.start && dates?.end) return { start: dates.start, end: dates.end };
   if (!weeks.length) return { start: null, end: null };
   const byIdx = new Map(boundaries.map((b) => [b.weekIndex, b]));
   const sorted = [...weeks].sort((a, b) => a - b);
@@ -88,11 +95,19 @@ export function stepWindow(weeks: number[], boundaries: WeekBoundary[]): { start
   return { start: first?.start ?? null, end: last?.end ?? null };
 }
 
-/** الإنجاز المخطط للخطوة حتى تاريخ معين: نسبة الأسابيع المجدولة المنقضية (مع جزء الأسبوع الجاري بالأيام) */
-export function plannedStepFraction(weeks: number[], boundaries: WeekBoundary[], asOf: string): number {
+/**
+ * الإنجاز المخطط للخطوة حتى تاريخ معين: نسبة الأسابيع المجدولة المنقضية (مع جزء الأسبوع الجاري بالأيام).
+ * المهمة دون أسابيع ولها تاريخان: توزيع خطي بين التاريخين. دونهما: توزيع خطي على الربع.
+ */
+export function plannedStepFraction(weeks: number[], boundaries: WeekBoundary[], asOf: string, dates?: { start?: string | null; end?: string | null }): number {
   const t = toDate(asOf);
   const byIdx = new Map(boundaries.map((b) => [b.weekIndex, b]));
   if (!weeks.length) {
+    if (dates?.start && dates?.end) {
+      const s = toDate(dates.start);
+      const e = toDate(dates.end) + DAY;
+      return clamp((t + DAY - s) / Math.max(DAY, e - s), 0, 1);
+    }
     // بلا جدولة: يفترض توزيعًا خطيًا على الربع كاملًا
     if (!boundaries.length) return 0;
     const qs = toDate(boundaries[0].start);
@@ -111,6 +126,16 @@ export function plannedStepFraction(weeks: number[], boundaries: WeekBoundary[],
   return clamp(total / weeks.length, 0, 1);
 }
 
+/** الحالة الزمنية: لم يحن موعدها، ضمن فترة التنفيذ، متأخرة، مكتملة — دون خلطها بحالة التنفيذ */
+export function stepTiming(status: StepStatus, window: { start: string | null; end: string | null }, asOf: string): StepTiming {
+  if (status === 'completed') return 'done';
+  if (!window.end) return 'unscheduled';
+  const t = toDate(asOf);
+  if (t > toDate(window.end)) return 'overdue';
+  if (window.start && t < toDate(window.start)) return 'not_due';
+  return 'in_window';
+}
+
 export function isWeekCurrent(weeks: number[], boundaries: WeekBoundary[], asOf: string): boolean {
   const t = toDate(asOf);
   return boundaries.some((b) => weeks.includes(b.weekIndex) && toDate(b.start) <= t && t <= toDate(b.end));
@@ -127,19 +152,22 @@ export function currentWeekIndex(boundaries: WeekBoundary[], asOf: string): numb
 // ---------------------------------------------------------------------
 
 export function evaluateStep(step: StepFact, boundaries: WeekBoundary[], asOf: string): StepEval {
-  const { start, end } = stepWindow(step.weeks, boundaries);
+  const dates = { start: step.plannedStart ?? null, end: step.plannedEnd ?? null };
+  const { start, end } = stepWindow(step.weeks, boundaries, dates);
   const progress = clamp(Number(step.progress) || 0);
   const isLate = !!end && progress < 100 && toDate(asOf) > toDate(end);
   const daysLate = isLate && end ? Math.floor((toDate(asOf) - toDate(end)) / DAY) : 0;
+  const isCurrent = start && end ? toDate(start) <= toDate(asOf) && toDate(asOf) <= toDate(end) : isWeekCurrent(step.weeks, boundaries, asOf);
   return {
     id: step.id,
+    timing: stepTiming(step.status, { start, end }, asOf),
     progress,
-    planned: round2(plannedStepFraction(step.weeks, boundaries, asOf) * 100),
+    planned: round2(plannedStepFraction(step.weeks, boundaries, asOf, dates) * 100),
     dueDate: end,
     startDate: start,
     isLate,
     daysLate,
-    isCurrentWeek: isWeekCurrent(step.weeks, boundaries, asOf),
+    isCurrentWeek: step.weeks.length ? isWeekCurrent(step.weeks, boundaries, asOf) : !!isCurrent,
   };
 }
 
@@ -178,6 +206,7 @@ export function evaluateActivity(a: ActivityFact, boundaries: WeekBoundary[], as
 
   return {
     id: a.id,
+    kind: a.kind,
     progress,
     planned,
     state,
@@ -218,6 +247,12 @@ export function evaluateDepartment(
     activitiesInProgress: 0,
     activitiesStalled: 0,
     activitiesNotStarted: 0,
+    projectsTotal: plan?.activities.filter((a) => a.kind === 'project').length ?? 0,
+    projectsCompleted: 0,
+    stepsTotal: plan?.activities.reduce((s, a) => s + a.steps.length, 0) ?? 0,
+    stepsCompleted: 0,
+    stepsInProgress: 0,
+    stepsLate: 0,
     lastUpdateAt: null,
     weightIssue: false,
     activities: [],
@@ -234,7 +269,8 @@ export function evaluateDepartment(
   progress = clamp(round2(progress / 100));
   planned = clamp(round2(planned / 100));
 
-  const updates = plan.activities.flatMap((a) => a.steps.map((s) => s.lastUpdateAt).filter(Boolean)) as string[];
+  const allSteps = plan.activities.flatMap((a) => a.steps);
+  const updates = allSteps.map((s) => s.lastUpdateAt).filter(Boolean) as string[];
   const lastUpdateAt = updates.sort().at(-1) ?? null;
   const hasDueWork = activities.some((a) => a.planned > 0);
 
@@ -260,6 +296,12 @@ export function evaluateDepartment(
     activitiesStalled: activities.filter((a) => a.state === 'stalled').length,
     activitiesInProgress: activities.filter((a) => a.state === 'in_progress').length,
     activitiesNotStarted: activities.filter((a) => a.state === 'not_started' || a.state === 'upcoming').length,
+    projectsTotal: activities.filter((a) => a.kind === 'project').length,
+    projectsCompleted: activities.filter((a) => a.kind === 'project' && a.state === 'completed').length,
+    stepsTotal: allSteps.length,
+    stepsCompleted: allSteps.filter((s) => s.status === 'completed').length,
+    stepsInProgress: allSteps.filter((s) => s.status === 'in_progress' || s.status === 'on_hold').length,
+    stepsLate: activities.reduce((n, a) => n + a.lateSteps, 0),
     lastUpdateAt,
     weightIssue: !weightsValid(plan.activities) || activities.some((a) => a.weightIssue),
     activities,
@@ -341,7 +383,7 @@ export function quarterCurve(plan: PlanFact, boundaries: WeekBoundary[], asOf: s
       let ap = 0;
       let aa = 0;
       for (const s of a.steps) {
-        ap += s.weight * plannedStepFraction(s.weeks, boundaries, end) * 100;
+        ap += s.weight * plannedStepFraction(s.weeks, boundaries, end, { start: s.plannedStart, end: s.plannedEnd }) * 100;
         const doneBy = s.status === 'completed' && s.actualEnd && toDate(s.actualEnd) <= toDate(end);
         if (doneBy) aa += s.weight * 100;
         else if (s.status !== 'completed' && s.progress > 0 && toDate(b.start) <= t && t <= toDate(end)) aa += s.weight * s.progress;

@@ -52,6 +52,10 @@ async function main() {
   await mk('comm', 'مدير الاتصال المؤسسي (تجريبي)', 'dept_manager', 'COMM');
   await mk('tmkn', 'مدير تمكين (تجريبي)', 'dept_manager', 'TMKN');
   await mk('rashid', 'موظف الاتصال (تجريبي)', 'employee', 'COMM', 'أخصائي اتصال');
+  await mk('noura', 'نورة — مصممة (تجريبي)', 'employee', 'COMM', 'مصممة جرافيك');
+  await mk('saad', 'سعد — منسق خدمات (تجريبي)', 'employee', 'SUPP', 'منسق خدمات');
+  await mk('huda', 'هدى — أخصائية برامج (تجريبي)', 'employee', 'SUPP', 'أخصائية برامج');
+  await mk('fahad', 'فهد — منسق مشاريع (تجريبي)', 'employee', 'PROJ', 'منسق مشاريع');
   await mk('board', 'عضو مجلس الإدارة (تجريبي)', 'board_member');
   await mk('admin', 'مسؤول النظام (تجريبي)', 'system_admin');
 
@@ -87,16 +91,24 @@ async function main() {
       await sb.rpc('update_step_progress', { p_step: s.id, p_status: 'in_progress', p_note: '[تجريبي] دورة أكتوبر', p_done_substeps: [subs[0].id] });
       n++;
     } else if (max <= 1 || (max === 2 && n % 3 !== 0)) {
-      await sb.rpc('update_step_progress', { p_step: s.id, p_status: 'completed', p_note: '[تجريبي] أنجزت' });
+      await sb.rpc('update_step_progress', { p_step: s.id, p_status: 'completed', p_note: '[تجريبي] أنجزت', p_actual_output: '[تجريبي] تحقق المخرج كما هو مخطط' });
       n++;
     } else if (weeks.includes(3)) {
       await sb.rpc('update_step_progress', { p_step: s.id, p_status: 'in_progress', p_note: '[تجريبي] قيد العمل' });
       n++;
     }
   }
-  // تفويض موظف
+  // إسناد: مكلف واحد، عدة مكلفين، وجميع موظفي الإدارة
   const { data: commSteps } = await admin.from('steps').select('id').eq('plan_id', planIds.COMM).ilike('responsible_text', '%رشيد%').limit(8);
-  for (const s of commSteps ?? []) await admin.from('steps').update({ assignee_id: ids.rashid }).eq('id', s.id);
+  for (const s of commSteps ?? []) await users.comm.rpc('set_step_assignees', { p_step: s.id, p_users: [ids.rashid] });
+  const { data: suppSteps } = await admin.from('steps').select('id,status').eq('plan_id', planIds.SUPP).neq('status', 'completed').order('seq').limit(6);
+  for (const [i, s] of (suppSteps ?? []).entries()) {
+    if (i < 3) await users.supp.rpc('set_step_assignees', { p_step: s.id, p_users: [ids.saad, ids.huda], p_lead: ids.saad, p_mode: 'collaborative' });
+    else if (i === 3) await users.supp.rpc('set_step_assignees', { p_step: s.id, p_users: [], p_all_dept: true, p_mode: 'individual', p_threshold: 100 });
+    else await users.supp.rpc('set_step_assignees', { p_step: s.id, p_users: [ids.huda] });
+  }
+  const { data: projSteps } = await admin.from('steps').select('id').eq('plan_id', planIds.PROJ).neq('status', 'completed').order('seq').limit(5);
+  for (const s of projSteps ?? []) await users.proj.rpc('set_step_assignees', { p_step: s.id, p_users: [ids.fahad, ids.proj], p_lead: ids.fahad });
 
   await users.ed.from('directives').insert({
     title: '[تجريبي] مراجعة جدول المشتريات الدورية قبل نهاية أكتوبر',
@@ -107,6 +119,27 @@ async function main() {
     created_by: ids.ed,
   });
   await users.proj.from('escalations').insert({ kind: 'decision', department_id: d.PROJ, title: '[تجريبي] اعتماد موازنة رحلة بادية رواسم', raised_by: ids.proj });
+
+  // خطة تنفيذية تجريبية بمؤشرات وقياسات
+  const ep = (await users.ed.from('exec_plans').insert({ year: 2026, title: 'الخطة التنفيذية 2026م (تجريبية)', created_by: ids.ed }).select('id').single()).data!;
+  const axes = [
+    ['بناء الشخصية المتوازنة', [['رفع أثر البرامج التربوية على المستفيدين', [['عدد المستفيدين من البرامج', 'مستفيد', 'numeric', 1200, 940], ['نسبة رضا المستفيدين', '%', 'percentage', 90, 89], ['عدد البرامج المنفذة', 'برنامج', 'numeric', 30, 27]]], ['توسيع الشراكات المجتمعية', [['عدد الشراكات الفاعلة', 'شراكة', 'numeric', 20, 19], ['ساعات التطوع', 'ساعة', 'numeric', 4000, 3500]]]]],
+    ['التميز المؤسسي', [['رفع كفاءة الأداء التشغيلي', [['نسبة إنجاز الخطط التشغيلية', '%', 'percentage', 90, 62], ['متوسط زمن إغلاق طلبات الشراء', 'يوم', 'numeric', 5, 7]]], ['تنمية الموارد المالية', [['الإيرادات المحققة', 'ريال', 'financial', 2500000, 1400000]]]]],
+  ] as const;
+  let sort = 1;
+  for (const [ai, [axisTitle, goals]] of axes.entries()) {
+    const ax = (await users.ed.from('exec_axes').insert({ plan_id: ep.id, title: axisTitle, sort_order: ai + 1 }).select('id').single()).data!;
+    for (const [gi, [goalTitle, kpis]] of goals.entries()) {
+      const g = (await users.ed.from('exec_goals').insert({ plan_id: ep.id, axis_id: ax.id, title: goalTitle, sort_order: gi + 1 }).select('id').single()).data!;
+      for (const [name, unit, type, target] of kpis) {
+        await users.ed.from('kpis').insert({ plan_id: ep.id, goal_id: g.id, name, unit: unit === '%' ? null : unit, kpi_type: type, annual_target: target, direction: name.includes('زمن') ? 'decrease' : 'increase', baseline: name.includes('زمن') ? 9 : null, sort_order: sort++ });
+      }
+    }
+  }
+  await users.ed.from('exec_plans').update({ status: 'approved', approved_by: ids.ed, approved_at: new Date().toISOString() }).eq('id', ep.id);
+  const { data: kp } = await users.ed.from('kpis').select('id,name').eq('plan_id', ep.id);
+  const actuals = Object.fromEntries(axes.flatMap(([, gs]) => gs.flatMap(([, ks]) => ks.map(([n, , , , a]) => [n, a]))));
+  for (const k of kp ?? []) await users.ed.from('kpi_measurements').insert({ kpi_id: k.id, value: actuals[k.name], measured_on: '2026-10-10', quarter: 4, recorded_by: ids.ed, note: '[تجريبي]' });
 
   console.log(`✓ بيانات تجريبية: ${Object.keys(ids).length} حسابات، ${Object.keys(planIds).length} خطط، ${n} تحديثات`);
   console.log(`  كلمة المرور الموحدة: ${PASSWORD}`);

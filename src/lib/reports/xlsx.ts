@@ -51,16 +51,16 @@ export async function reportToXlsx(snap: ReportSnapshot, title: string, comment:
   const d = sheet(
     wb,
     'الإدارات',
-    ['الإدارة', 'الإنجاز', 'المخطط', 'الأنشطة', 'المكتملة', 'المتأخرة', 'المتعثرة', 'حالة البيانات'],
-    o.departments.map((x) => [x.name, x.progress === null ? null : x.progress / 100, x.planned === null ? null : x.planned / 100, x.activities, x.completed, x.late, x.stalled, DATA_STATE[x.dataState]]),
-    [26, 12, 12, 10, 10, 10, 10, 18],
+    ['الإدارة', 'الإنجاز', 'المخطط', 'المشاريع والأنشطة', 'المكتملة', 'المتأخرة', 'المتعثرة', 'المهام التنفيذية', 'المهام المكتملة', 'المهام المتأخرة', 'حالة البيانات'],
+    o.departments.map((x) => [x.name, x.progress === null ? null : x.progress / 100, x.planned === null ? null : x.planned / 100, x.activities, x.completed, x.late, x.stalled, x.steps ?? null, x.stepsCompleted ?? null, x.stepsLate ?? null, DATA_STATE[x.dataState]]),
+    [26, 12, 12, 14, 10, 10, 10, 14, 12, 12, 18],
   );
   d.getColumn(2).numFmt = '0.0%';
   d.getColumn(3).numFmt = '0.0%';
   if (o.quarters) sheet(wb, 'الأرباع', ['الربع', 'الإنجاز', 'ملاحظة'], o.quarters.map((q) => [QUARTER_LABEL[q.quarter], q.hasPlans ? (q.computable ? q.progress : q.partial) : null, !q.hasPlans ? 'لا توجد خطط' : q.computable ? 'مكتمل' : 'جزئي']), [16, 12, 16]);
   if (o.months) sheet(wb, 'الأشهر', ['الشهر', 'مجدولة', 'منجزة', 'متأخرة'], o.months.map((m) => [MONTHS[m.month], m.scheduled, m.done, m.late]), [16, 12, 12, 12]);
-  sheet(wb, 'المنجزات', ['الخطوة', 'النشاط', 'الإدارة', 'التاريخ'], snap.achievements.map((a) => [a.step, a.activity, a.department, a.date]), [40, 34, 22, 14]);
-  sheet(wb, 'المتأخرات', ['الخطوة', 'النشاط', 'الإدارة', 'المسؤول', 'الموعد', 'أيام التأخر'], snap.lateItems.map((a) => [a.step, a.activity, a.department, a.responsible, a.dueDate, a.daysLate]), [40, 34, 22, 22, 14, 12]);
+  sheet(wb, 'المنجزات', ['المهمة المنجزة', 'المشروع/النشاط', 'الإدارة', 'التاريخ', 'المخرج المتحقق'], snap.achievements.map((a) => [a.step, a.activity, a.department, a.date, a.output ?? null]), [40, 34, 22, 14, 40]);
+  sheet(wb, 'المتأخرات', ['المهمة', 'المشروع/النشاط', 'الإدارة', 'المسؤول', 'الموعد', 'أيام التأخر'], snap.lateItems.map((a) => [a.step, a.activity, a.department, a.responsible, a.dueDate, a.daysLate]), [40, 34, 22, 22, 14, 12]);
   sheet(
     wb,
     'المؤشرات',

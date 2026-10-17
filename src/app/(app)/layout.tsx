@@ -1,9 +1,12 @@
+import { redirect } from 'next/navigation';
 import { requireSession } from '@/lib/auth';
 import { Shell } from '@/components/shell';
 import { ROLE_LABELS } from '@/lib/labels';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { profile, sb } = await requireSession();
+  // من أُنشئ حسابه أو أُعيد تعيينه يعين كلمة مروره أولًا
+  if ((profile as { must_change_password?: boolean }).must_change_password) redirect('/set-password');
   let deptName: string | null = null;
   if (profile.department_id) {
     const { data } = await sb.from('departments').select('name').eq('id', profile.department_id).single();

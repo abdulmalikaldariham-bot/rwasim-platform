@@ -127,7 +127,8 @@ export function ReportDocument({
                 <tr>
                   <th>الإدارة</th>
                   <th style={{ width: '38%' }}>الإنجاز</th>
-                  <th>الأنشطة</th>
+                  <th>المشاريع والأنشطة</th>
+                  <th>المهام التنفيذية</th>
                   <th>حالة البيانات</th>
                 </tr>
               </thead>
@@ -142,8 +143,12 @@ export function ReportDocument({
                       </div>
                     </td>
                     <td>
-                      {d.completed}/{d.activities}
+                      {d.completed}/{d.activities} مكتملة
                       {d.late + d.stalled > 0 && <span className="warn"> ({d.late + d.stalled} متأخرة)</span>}
+                    </td>
+                    <td>
+                      {d.steps === undefined ? '—' : `${d.stepsCompleted}/${d.steps} مكتملة`}
+                      {!!d.stepsLate && <span className="warn"> ({d.stepsLate} متأخرة)</span>}
                     </td>
                     <td>{DATA_STATE[d.dataState]}</td>
                   </tr>
@@ -175,7 +180,7 @@ export function ReportDocument({
               <thead>
                 <tr>
                   <th>الشهر</th>
-                  <th>خطوات مجدولة</th>
+                  <th>مهام مجدولة</th>
                   <th>منجزة</th>
                   <th>متأخرة</th>
                 </tr>
@@ -209,13 +214,13 @@ export function ReportDocument({
             </>
           )}
           {snap.achievements.length === 0 ? (
-            <p className="muted">لم تُسجل خطوات مكتملة في هذه الفترة.</p>
+            <p className="muted">لم تُسجل مهام مكتملة في هذه الفترة.</p>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>الخطوة المنجزة</th>
-                  <th>النشاط</th>
+                  <th>المهمة المنجزة</th>
+                  <th>المشروع / النشاط</th>
                   <th>الإدارة</th>
                   <th>التاريخ</th>
                 </tr>
@@ -223,7 +228,10 @@ export function ReportDocument({
               <tbody>
                 {snap.achievements.map((a, i) => (
                   <tr key={i}>
-                    <td>{a.step}</td>
+                    <td>
+                      {a.step}
+                      {a.output && <div className="muted">المخرج: {a.output}</div>}
+                    </td>
                     <td>{a.activity}</td>
                     <td>{a.department}</td>
                     <td>{date(a.date)}</td>
@@ -242,7 +250,7 @@ export function ReportDocument({
             <table>
               <thead>
                 <tr>
-                  <th>الخطوة</th>
+                  <th>المهمة</th>
                   <th>النشاط</th>
                   <th>الإدارة</th>
                   <th>المسؤول</th>

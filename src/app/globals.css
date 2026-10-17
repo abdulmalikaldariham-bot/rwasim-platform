@@ -6,56 +6,83 @@
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-/* ===== هوية رواسم =====
-   كحلي #013047 للحبر والتنقل، فيروزي #326e7c للأساس، برتقالي #f09223 للتنبيه
-   ورق بارد مائل للنعناع بدل الأبيض الدافئ */
+/* خط العناوين في موقع رواسم الرسمي (خط عام الحرف اليدوية).
+   يُحمّل إذا وُضعت ملفاته في public/brand/fonts، وإلا يُستخدم IBM Plex Sans Arabic. */
+@font-face {
+  font-family: 'Rawasim Display';
+  src: url('/brand/fonts/TheYearofHandicrafts-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Rawasim Display';
+  src: url('/brand/fonts/TheYearofHandicrafts-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+/* ===== هوية رواسم — مأخوذة من rwasim.sa =====
+   الحبر  #0e4156 · الفيروزي #336e7c · الخافت #5d8896 · خلفية الصفحة #edf0f3
+   البرتقالي (العقدة في الشعار) #ef9122 · نص التنبيه #c46a0a
+   الوضع الداكن: خلفية #041720 ولوحات متدرجة #0b2733 → #061a23 */
 :root {
-  --ink: #013047;
-  --teal: #326e7c;
-  --teal-soft: #e3eef0;
-  --orange: #f09223;
-  --orange-soft: #fdf0e1;
-  --paper: #f4f7f7;
+  --ink: #0e4156;
+  --teal: #336e7c;
+  --teal-soft: #e2eef1;
+  --orange: #ef9122;
+  --orange-soft: #fdf1e2;
+  --paper: #edf0f3;
   --surface: #ffffff;
-  --sunken: #eaf0f1;
-  --line: #d7e2e4;
-  --text: #0d2b3a;
-  --muted: #5b7380;
-  --done: #2c8a6a;
-  --done-soft: #e2f2ec;
-  --late: #d9771a;
+  --sunken: #e8eef1;
+  --line: #d6e1e6;
+  --text: #0f3546;
+  --muted: #5d8896;
+  --done: #2a8a69;
+  --done-soft: #e0f2ea;
+  --late: #c46a0a;
   --stalled: #b8443c;
-  --stalled-soft: #f8e7e5;
-  --nodata: #93a6ad;
-  --focus: #f09223;
-  --nav: #013047;
-  --nav-text: #cfe0e4;
+  --stalled-soft: #f8e6e4;
+  --nodata: #93a9b2;
+  --focus: #ef9122;
+  --nav: #0d3a4d;
+  --nav-deep: #041720;
+  --nav-text: #b6ccd6;
+  --gold: #8a6a2a;
+  --card-shadow: 0 1px 0 #ffffff inset, 0 18px 40px -26px #0e415659, 0 2px 6px -2px #0e41561a;
+  --card-border: #ffffffcc;
+  --hero: linear-gradient(160deg, #15516c 0%, #0d3a4d 52%, #082633 100%);
 }
 
 [data-theme='dark'] {
-  --ink: #e7f1f3;
-  --teal: #6fb3c2;
-  --teal-soft: #15343f;
-  --orange: #f5a54a;
-  --orange-soft: #3a2a17;
-  --paper: #071a22;
-  --surface: #0c2530;
-  --sunken: #0a1f28;
-  --line: #1d3c48;
-  --text: #e2edf0;
-  --muted: #8fa9b2;
+  --ink: #f2f8fa;
+  --teal: #74b7c5;
+  --teal-soft: #123744;
+  --orange: #f4a63f;
+  --orange-soft: #3a2a15;
+  --paper: #041720;
+  --surface: #0b2733;
+  --sunken: #082633;
+  --line: #ffffff1f;
+  --text: #dcebf2;
+  --muted: #a2becf;
   --done: #4fbf97;
-  --done-soft: #123a30;
-  --late: #f5a54a;
+  --done-soft: #0f3a30;
+  --late: #f4a63f;
   --stalled: #e57b72;
   --stalled-soft: #3b1d1b;
-  --nodata: #5f7881;
-  --nav: #04141b;
-  --nav-text: #a9c4cb;
+  --nodata: #5f7d88;
+  --nav: #061a23;
+  --nav-deep: #030f15;
+  --nav-text: #a2becf;
+  --gold: #d8c8a4;
+  --card-shadow: 0 0 0 1px #ffffff12, 0 18px 40px -24px #000000aa;
+  --card-border: #ffffff14;
+  --hero: linear-gradient(160deg, #15516c 0%, #0d3a4d 55%, #0a2e3e 100%);
 }
 
 @theme inline {
   --font-sans: 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-display: 'Rawasim Display', 'IBM Plex Sans Arabic', system-ui, sans-serif;
   --color-ink: var(--ink);
   --color-teal: var(--teal);
   --color-teal-soft: var(--teal-soft);
@@ -75,6 +102,8 @@
   --color-nodata: var(--nodata);
   --color-nav: var(--nav);
   --color-nav-text: var(--nav-text);
+  --color-gold: var(--gold);
+  --shadow-card: var(--card-shadow);
 }
 
 html {
@@ -87,19 +116,63 @@ body {
   background: var(--paper);
   min-height: 100dvh;
   font-feature-settings: 'tnum' 1;
-  line-height: 1.6;
+  line-height: 1.65;
+}
+
+h1,
+h2,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.005em;
 }
 
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .num {
   font-variant-numeric: tabular-nums;
   direction: ltr;
   unicode-bidi: isolate;
+}
+
+/* البطاقة الموحدة: حواف واسعة وظل ناعم كما في بطاقات موقع الجمعية */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  box-shadow: var(--card-shadow);
+}
+.card-hover {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--teal) 45%, var(--line));
+}
+
+/* اللوحة الداكنة (هوية الموقع) للعناوين الرئيسية ولوحة العرض */
+.hero {
+  background-color: #0d3a4d;
+  background-image:
+    radial-gradient(50rem 24rem at 90% -20%, #2a7b9a66, transparent 60%),
+    radial-gradient(30rem 20rem at 0% 120%, #ef912230, transparent 60%),
+    var(--hero);
+  color: #fff;
+}
+
+/* الخط البرتقالي القصير تحت الأرقام (من بطاقات «أثرنا بالأرقام») */
+.accent-dash {
+  display: block;
+  width: 1.75rem;
+  height: 3px;
+  border-radius: 99px;
+  background: var(--orange);
 }
 
 /* طبقات الرواسب: خطوط أفقية خفيفة تستحضر اسم الجمعية */
@@ -109,6 +182,28 @@ body {
     transparent 0 11px,
     color-mix(in oklab, var(--line) 55%, transparent) 11px 12px
   );
+}
+
+/* هالة ضوئية خفيفة في الخلفيات الداكنة */
+.glow:not(.hero) {
+  background-image:
+    radial-gradient(60rem 30rem at 85% -10%, #2a7b9a55, transparent 60%),
+    radial-gradient(40rem 26rem at 0% 110%, #ef912222, transparent 60%);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--sunken) 0%, color-mix(in oklab, var(--sunken) 60%, var(--surface)) 50%, var(--sunken) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 0.75rem;
+}
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -133,11 +228,28 @@ body {
   animation: settle 900ms cubic-bezier(0.2, 0.7, 0.1, 1) both;
 }
 
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise 420ms cubic-bezier(0.2, 0.7, 0.1, 1) both;
+}
+
 @media print {
   .no-print {
     display: none !important;
   }
   body {
     background: white;
+  }
+  .card {
+    box-shadow: none;
   }
 }

@@ -19,6 +19,8 @@ interface FactRow {
   weeks: number[];
   last_update_at: string | null;
   actual_end: string | null;
+  planned_start: string | null;
+  planned_end: string | null;
 }
 
 export interface YearProgress {
@@ -60,6 +62,8 @@ export async function loadYearProgress(sb: SupabaseClient, year: number): Promis
         weeks: r.weeks ?? [],
         lastUpdateAt: r.last_update_at,
         actualEnd: r.actual_end,
+        plannedStart: r.planned_start,
+        plannedEnd: r.planned_end,
       });
     }
   }

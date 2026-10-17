@@ -21,3 +21,4 @@ supabase/.branches/
 *.tsbuildinfo
 next-env.d.ts
 coverage/
+AGENTS.md

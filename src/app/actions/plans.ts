@@ -253,6 +253,21 @@ export async function saveWeightsAction(input: {
   return { ok: true, message: 'حُفظت الأوزان' };
 }
 
+/** حفظ التوزيع الحالي كتوزيع مقترح (لا يغير الأوزان المعتمدة ولا يحتسب) */
+export async function saveSuggestedWeightsAction(input: { planId: string; activities: { id: string; weight: number }[]; steps: { id: string; weight: number }[] }): Promise<ActionResult> {
+  const sb = await createClient();
+  for (const a of input.activities) {
+    const { error } = await sb.from('activities').update({ suggested_weight: a.weight }).eq('id', a.id).eq('plan_id', input.planId);
+    if (error) return fail(error);
+  }
+  for (const s of input.steps) {
+    const { error } = await sb.from('steps').update({ suggested_weight: s.weight }).eq('id', s.id).eq('plan_id', input.planId);
+    if (error) return fail(error);
+  }
+  revalidatePath(`/plans/${input.planId}/weights`);
+  return { ok: true, message: 'حُفظ التوزيع المقترح — يمكنك استعادته لاحقًا' };
+}
+
 // ---------------------------------------------------------------------
 // دورة الاعتماد
 // ---------------------------------------------------------------------

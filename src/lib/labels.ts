@@ -61,3 +61,23 @@ export const REPORT_TYPE: Record<string, string> = { monthly: 'شهري', quarte
 export function weekLabel(month: number, weekOfMonth: number) {
   return `${MONTHS[month]} · الأسبوع ${weekOfMonth}`;
 }
+
+// الحالة الزمنية للمهمة (مستقلة عن حالة التنفيذ)
+export const TIMING: Record<string, string> = {
+  unscheduled: 'بلا تاريخ',
+  not_due: 'لم يحن موعدها',
+  in_window: 'ضمن فترة التنفيذ',
+  overdue: 'متأخرة',
+  done: 'مكتملة',
+};
+
+export const OUTPUT_REQUIREMENT: Record<string, string> = {
+  none: 'لا يلزم توثيق',
+  text: 'وصف المخرج المتحقق',
+  evidence: 'وصف المخرج + شاهد',
+};
+
+export const ASSIGN_MODE: Record<string, string> = {
+  collaborative: 'مهمة تعاونية',
+  individual: 'مهمة فردية لكل مكلف',
+};

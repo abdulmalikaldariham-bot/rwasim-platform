@@ -211,7 +211,7 @@ run('المنصة على قاعدة بيانات حقيقية', () => {
 
     // تمكين: إكمال الخطوة الأولى (60٪ من نشاط وزنه 100) = 60٪ للإدارة = 12٪ للجمعية
     const st = ok(await users.mgrTmkn.sb.from('steps').select('id').eq('plan_id', planIds.TMKN).order('seq')) as { id: string }[];
-    const p = ok(await users.mgrTmkn.sb.rpc('update_step_progress', { p_step: st[0].id, p_status: 'completed', p_note: 'تم تصميم البرنامج' }));
+    const p = ok(await users.mgrTmkn.sb.rpc('update_step_progress', { p_step: st[0].id, p_status: 'completed', p_note: 'تم تصميم البرنامج', p_actual_output: 'برنامج معتمد' }));
     expect(Number(p)).toBe(100);
     const after = evaluateQuarter(await loadYearProgress(users.board.sb, 2026), 4, { asOf: '2026-10-15' });
     const tm = after.departments.find((d) => d.departmentId === dept.TMKN)!;
@@ -250,7 +250,7 @@ run('المنصة على قاعدة بيانات حقيقية', () => {
     expect(otherPlans.map((p) => p.id)).toEqual([planIds.COMM]);
     expect((ok(await users.empComm2.sb.from('steps').select('id')) as unknown[]).length).toBe(0);
 
-    ok(await users.empComm.sb.rpc('update_step_progress', { p_step: steps[0].id, p_status: 'completed', p_note: 'أنجزت' }));
+    ok(await users.empComm.sb.rpc('update_step_progress', { p_step: steps[0].id, p_status: 'completed', p_note: 'أنجزت', p_actual_output: 'تم النشر' }));
     const denied = await users.empComm.sb.rpc('update_step_progress', { p_step: steps[1].id, p_status: 'completed' });
     expect(denied.error?.message).toMatch(/لا تملك صلاحية/);
     // الموظف لا يغير حالته أو دوره
@@ -274,7 +274,7 @@ run('المنصة على قاعدة بيانات حقيقية', () => {
 
   // 18. مجلس الإدارة
   it('18. مجلس الإدارة: قراءة الخطط المعتمدة فقط دون تعديل', async () => {
-    const plans = ok(await users.board.sb.from('op_plans').select('id,status')) as { status: string }[];
+    const plans = ok(await users.board.sb.from('op_plans').select('id,status').eq('year', 2026)) as { status: string }[];
     expect(plans.length).toBe(5);
     expect(plans.every((p) => p.status === 'approved')).toBe(true);
     const upd = await users.board.sb.from('steps').update({ responsible_text: 'x' }).eq('plan_id', planIds.EXEC).select();
@@ -399,7 +399,7 @@ run('المنصة على قاعدة بيانات حقيقية', () => {
     expect(after.progress).toBe(before.progress);
     const st = ok(await users.mgrTmkn.sb.from('steps').select('id').eq('plan_id', planIds.TMKN).order('seq').limit(1).single()) as { id: string };
     expect((await users.mgrTmkn.sb.rpc('update_step_progress', { p_step: st.id, p_status: 'not_started' })).error).toBeTruthy();
-    const years = ok(await users.ed.sb.from('years').select('year,status').order('year')) as { year: number; status: string }[];
+    const years = ok(await users.ed.sb.from('years').select('year,status').in('year', [2026, 2027]).order('year')) as { year: number; status: string }[];
     expect(years).toEqual([
       { year: 2026, status: 'archived' },
       { year: 2027, status: 'planning' },

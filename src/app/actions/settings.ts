@@ -1,6 +1,7 @@
 'use server';
 import { revalidatePath } from 'next/cache';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
+import { headers } from 'next/headers';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import type { ActionResult } from './steps';
 
@@ -101,29 +102,71 @@ export async function saveSettingAction(key: string, value: unknown): Promise<Ac
 }
 
 // ---------- المستخدمون ----------
+/**
+ * كلمة مرور مؤقتة فريدة وقوية لكل مستخدم (لا تُخزن نصًا صريحًا؛ يحفظها نظام المصادقة مجزأة).
+ * سهلة النقل شفهيًا: كلمتان + أرقام + رمز، مثل «Najm-Bahr-4827!»
+ */
+const WORDS = ['Najm', 'Bahr', 'Nakhl', 'Qamar', 'Sahab', 'Rimal', 'Wadi', 'Jabal', 'Nour', 'Fajr', 'Ghaim', 'Shams', 'Dana', 'Reem', 'Sanad', 'Athar'];
 function tempPassword() {
-  return 'Rw-' + randomBytes(9).toString('base64url');
+  const w = () => WORDS[randomInt(WORDS.length)];
+  return `${w()}-${w()}-${randomInt(1000, 9999)}${'!@#$%'[randomInt(5)]}`;
 }
 
-export async function createUserAction(input: { email: string; full_name: string; role: string; department_id: string | null; job_title?: string }): Promise<{ ok: true; password: string } | { ok: false; error: string }> {
+async function siteOrigin() {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host');
+  const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') || host?.startsWith('127.') ? 'http' : 'https');
+  return `${proto}://${host}`;
+}
+
+/** رابط تعيين كلمة مرور لمرة واحدة (لا يحتاج بريدًا؛ ينسخه المسؤول ويرسله للمستخدم) */
+async function setupLink(email: string): Promise<string> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.auth.admin.generateLink({ type: 'recovery', email });
+  if (error || !data.properties?.hashed_token) throw new Error(error?.message ?? 'تعذر إنشاء الرابط');
+  return `${await siteOrigin()}/auth/confirm?token_hash=${encodeURIComponent(data.properties.hashed_token)}&type=recovery&next=/set-password`;
+}
+
+export type Credential = { kind: 'link'; link: string } | { kind: 'password'; password: string };
+
+export async function createUserAction(input: {
+  email: string;
+  full_name: string;
+  role: string;
+  department_id: string | null;
+  job_title?: string;
+  method?: 'link' | 'password';
+}): Promise<{ ok: true; credential: Credential } | { ok: false; error: string }> {
   const c = await caller();
   if (!c) return fail('انتهت الجلسة');
   if (c.role !== 'executive_director' && c.role !== 'system_admin') return fail('إدارة المستخدمين للمدير التنفيذي ومسؤول النظام');
-  if (!/^\S+@\S+\.\S+$/.test(input.email)) return fail('بريد غير صالح');
+  if (!input.full_name.trim()) return fail('اكتب اسم المستخدم');
+  if (!/^\S+@\S+\.\S+$/.test(input.email.trim())) return fail('بريد غير صالح');
   if ((input.role === 'dept_manager' || input.role === 'employee') && !input.department_id) return fail('حدد الإدارة لمدير الإدارة والموظف');
+  const email = input.email.trim().toLowerCase();
   const admin = createAdminClient();
-  const password = tempPassword();
+  const method = input.method ?? 'link';
+  // مع رابط الإعداد تُنشأ كلمة مرور عشوائية طويلة لا يعرفها أحد ثم يعينها المستخدم بنفسه
+  const password = method === 'password' ? tempPassword() : randomBytes(24).toString('base64url') + 'aA1!';
   const { data, error } = await admin.auth.admin.createUser({
-    email: input.email.trim().toLowerCase(),
+    email,
     password,
     email_confirm: true,
     user_metadata: { full_name: input.full_name.trim() },
     app_metadata: { role: input.role, department_id: input.department_id },
   });
   if (error) return fail(error.message.includes('already') ? 'البريد مسجل مسبقًا' : error.message);
-  await admin.from('profiles').update({ full_name: input.full_name.trim(), job_title: input.job_title || null, role: input.role, department_id: input.department_id }).eq('id', data.user!.id);
+  await admin
+    .from('profiles')
+    .update({ full_name: input.full_name.trim(), job_title: input.job_title || null, role: input.role, department_id: input.department_id, must_change_password: true })
+    .eq('id', data.user!.id);
   revalidatePath('/settings/users');
-  return { ok: true, password };
+  try {
+    return { ok: true, credential: method === 'password' ? { kind: 'password', password } : { kind: 'link', link: await setupLink(email) } };
+  } catch (e) {
+    return fail(`أُنشئ الحساب لكن تعذر إنشاء رابط الإعداد: ${(e as Error).message}. استخدم «إعادة تعيين» من قائمة المستخدمين.`);
+  }
 }
 
 export async function updateUserAction(id: string, patch: { role?: string; department_id?: string | null; is_active?: boolean; full_name?: string; job_title?: string | null }): Promise<ActionResult> {
@@ -149,20 +192,52 @@ export async function updateUserAction(id: string, patch: { role?: string; depar
   return { ok: true, message: 'حُدث المستخدم' };
 }
 
-export async function resetPasswordAction(id: string): Promise<{ ok: true; password: string } | { ok: false; error: string }> {
+/** إعادة تعيين الدخول: رابط لمرة واحدة (افتراضي) أو كلمة مرور مؤقتة؛ يُطلب من المستخدم تعيين كلمته عند الدخول */
+export async function resetPasswordAction(id: string, method: 'link' | 'password' = 'link'): Promise<{ ok: true; credential: Credential } | { ok: false; error: string }> {
   const c = await caller();
   if (!c) return fail('انتهت الجلسة');
   if (c.role !== 'executive_director' && c.role !== 'system_admin') return fail('غير مصرح');
-  const password = tempPassword();
-  const { error } = await createAdminClient().auth.admin.updateUserById(id, { password });
-  if (error) return fail(error.message);
-  return { ok: true, password };
+  const admin = createAdminClient();
+  const { data: u, error: ue } = await admin.auth.admin.getUserById(id);
+  if (ue || !u.user?.email) return fail('المستخدم غير موجود');
+  await admin.from('profiles').update({ must_change_password: true }).eq('id', id);
+  if (method === 'password') {
+    const password = tempPassword();
+    const { error } = await admin.auth.admin.updateUserById(id, { password });
+    if (error) return fail(error.message);
+    return { ok: true, credential: { kind: 'password', password } };
+  }
+  try {
+    return { ok: true, credential: { kind: 'link', link: await setupLink(u.user.email) } };
+  } catch (e) {
+    return fail((e as Error).message);
+  }
+}
+
+function passwordProblem(p: string): string | null {
+  if (p.length < 10) return 'كلمة المرور 10 أحرف على الأقل';
+  if (!/[A-Za-z\u0600-\u06FF]/.test(p) || !/\d/.test(p)) return 'استخدم أحرفًا وأرقامًا معًا';
+  if (/^(.)\1+$/.test(p) || /^(?:1234567890|0123456789|password|qwerty)/i.test(p)) return 'كلمة المرور ضعيفة جدًا';
+  return null;
 }
 
 export async function changeOwnPasswordAction(password: string): Promise<ActionResult> {
-  if (password.length < 10) return fail('كلمة المرور 10 أحرف على الأقل');
+  const bad = passwordProblem(password);
+  if (bad) return fail(bad);
   const sb = await createClient();
   const { error } = await sb.auth.updateUser({ password });
-  if (error) return fail(error.message);
+  if (error) return fail(error.message.includes('different') ? 'اختر كلمة مرور مختلفة عن السابقة' : error.message);
+  await sb.rpc('password_changed');
+  revalidatePath('/', 'layout');
   return { ok: true, message: 'تغيرت كلمة المرور' };
+}
+
+/** طلب رابط استعادة كلمة المرور بالبريد (يتطلب إعداد البريد في Supabase) */
+export async function requestPasswordResetAction(email: string): Promise<ActionResult> {
+  const e = email.trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(e)) return fail('أدخل بريدًا صحيحًا');
+  const sb = await createClient();
+  await sb.auth.resetPasswordForEmail(e, { redirectTo: `${await siteOrigin()}/auth/confirm?next=/set-password` });
+  // رسالة موحدة لا تكشف إن كان البريد مسجلًا
+  return { ok: true, message: 'إن كان البريد مسجلًا فستصلك رسالة برابط تعيين كلمة المرور خلال دقائق.' };
 }

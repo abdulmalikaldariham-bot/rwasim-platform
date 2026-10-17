@@ -20,6 +20,9 @@ export interface StepFact {
   weeks: number[];
   lastUpdateAt?: string | null;
   actualEnd?: string | null;
+  /** تاريخ البداية والنهاية المعتمدان (من الجدولة الأسبوعية أو يدويًا) */
+  plannedStart?: string | null;
+  plannedEnd?: string | null;
 }
 
 export interface ActivityFact {
@@ -53,8 +56,12 @@ export type DataState =
 
 export type ActivityState = 'completed' | 'stalled' | 'late' | 'in_progress' | 'not_started' | 'upcoming';
 
+/** الحالة الزمنية للمهمة — مستقلة عن حالة التنفيذ */
+export type StepTiming = 'unscheduled' | 'not_due' | 'in_window' | 'overdue' | 'done';
+
 export interface StepEval {
   id: string;
+  timing: StepTiming;
   progress: number;
   planned: number; // الإنجاز المخطط حتى التاريخ (0..100)
   dueDate: string | null;
@@ -66,6 +73,7 @@ export interface StepEval {
 
 export interface ActivityEval {
   id: string;
+  kind?: ActivityKind;
   progress: number;
   planned: number;
   state: ActivityState;
@@ -91,6 +99,14 @@ export interface DeptEval {
   activitiesInProgress: number;
   activitiesStalled: number;
   activitiesNotStarted: number;
+  /** المشاريع (طبيعة «مشروع») ضمن المشاريع والأنشطة */
+  projectsTotal: number;
+  projectsCompleted: number;
+  /** المهام التنفيذية — تُعد منفصلة عن المشاريع والأنشطة ولا تُدمج معها */
+  stepsTotal: number;
+  stepsCompleted: number;
+  stepsInProgress: number;
+  stepsLate: number;
   lastUpdateAt: string | null;
   weightIssue: boolean;
   activities: ActivityEval[];

@@ -59,11 +59,13 @@ export function PlanActions({
   const draft = status === 'draft' || status === 'returned';
   return (
     <div className="flex flex-wrap gap-2">
+      {canEdit && status !== 'archived' && status !== 'submitted' && (
+        <ButtonLink variant="accent" href={`/plans/${planId}/weights`}>
+          إدارة الأوزان
+        </ButtonLink>
+      )}
       {canEdit && draft && (
         <>
-          <ButtonLink variant="secondary" href={`/plans/${planId}/weights`}>
-            ضبط الأوزان
-          </ButtonLink>
           {status === 'draft' && (
             <Button variant="ghost" className="text-stalled" disabled={pending} onClick={() => confirm('حذف هذه المسودة نهائيًا؟') && run(() => deletePlanAction(planId), () => router.push('/plans'))}>
               حذف المسودة
@@ -88,11 +90,7 @@ export function PlanActions({
           </Button>
         </>
       )}
-      {canEdit && status === 'approved' && (
-        <ButtonLink variant="secondary" href={`/plans/${planId}/weights`}>
-          {isEd ? 'تعديل الأوزان (يُوثق كإصدار جديد)' : hasPendingRequest ? 'طلب تعديل آخر' : 'طلب تعديل الأوزان'}
-        </ButtonLink>
-      )}
+      {canEdit && status === 'approved' && hasPendingRequest && <span className="self-center text-xs text-muted">يوجد طلب تعديل بانتظار القرار</span>}
       <Dialog open={returnOpen} onOpenChange={setReturnOpen} title="إعادة الخطة للتعديل">
         <Label htmlFor="rn">ما المطلوب تعديله؟</Label>
         <Textarea id="rn" value={note} onChange={(e) => setNote(e.target.value)} />
@@ -132,13 +130,13 @@ export function StructureEditor({ planId, activities, months, kpis }: { planId: 
             <ActivityHeader a={a} kpis={kpis} />
             <div className="flex gap-1">
               <StepDialog planId={planId} activityId={a.id} months={months} />
-              <Button variant="ghost" className="h-8 px-2 text-stalled" aria-label="حذف النشاط" onClick={() => confirm(`حذف النشاط «${a.title}» وخطواته؟`) && run(() => deleteActivityAction(a.id))}>
+              <Button variant="ghost" className="h-8 px-2 text-stalled" aria-label="حذف النشاط" onClick={() => confirm(`حذف النشاط «${a.title}» ومهامه؟`) && run(() => deleteActivityAction(a.id))}>
                 <Trash2 size={15} />
               </Button>
             </div>
           </div>
           <ul className="divide-y divide-line border-t border-line">
-            {a.steps.length === 0 && <li className="px-5 py-3 text-sm text-late">النشاط بلا خطوات — أضف خطوة واحدة على الأقل.</li>}
+            {a.steps.length === 0 && <li className="px-5 py-3 text-sm text-late">النشاط بلا مهام — أضف مهمة واحدة على الأقل.</li>}
             {a.steps.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-2.5 text-sm">
                 <div className="min-w-0 flex-1">
@@ -154,7 +152,7 @@ export function StructureEditor({ planId, activities, months, kpis }: { planId: 
                 <span className="num w-12 text-left text-xs text-muted">{fmtPct(s.weight)}</span>
                 <div className="flex gap-1">
                   <StepDialog planId={planId} activityId={a.id} months={months} step={s} />
-                  <Button variant="ghost" className="h-8 px-2 text-stalled" aria-label="حذف الخطوة" disabled={pending} onClick={() => confirm('حذف الخطوة؟') && run(() => deleteStepAction(s.id))}>
+                  <Button variant="ghost" className="h-8 px-2 text-stalled" aria-label="حذف المهمة" disabled={pending} onClick={() => confirm('حذف المهمة؟') && run(() => deleteStepAction(s.id))}>
                     <Trash2 size={14} />
                   </Button>
                 </div>
@@ -230,18 +228,18 @@ function StepDialog({ planId, activityId, months, step }: { planId: string; acti
   return (
     <>
       {step ? (
-        <Button variant="ghost" className="h-8 px-2" aria-label="تعديل الخطوة" onClick={() => setOpen(true)}>
+        <Button variant="ghost" className="h-8 px-2" aria-label="تعديل المهمة" onClick={() => setOpen(true)}>
           <Pencil size={14} />
         </Button>
       ) : (
         <Button variant="ghost" className="h-8" onClick={() => setOpen(true)}>
-          <Plus size={15} /> خطوة
+          <Plus size={15} /> مهمة
         </Button>
       )}
-      <Dialog open={open} onOpenChange={setOpen} title={step ? 'تعديل الخطوة' : 'خطوة جديدة'}>
+      <Dialog open={open} onOpenChange={setOpen} title={step ? 'تعديل المهمة' : 'مهمة جديدة'}>
         <div className="space-y-3">
           <div>
-            <Label htmlFor="st">الخطوة</Label>
+            <Label htmlFor="st">المهمة التنفيذية</Label>
             <Input id="st" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">

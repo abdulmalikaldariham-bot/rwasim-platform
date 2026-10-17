@@ -24,6 +24,9 @@ export function LoginForm({ next }: { next?: string }) {
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? 'جارٍ الدخول…' : 'دخول'}
       </Button>
+      <a href="/forgot-password" className="block text-center text-sm text-muted hover:text-teal">
+        نسيت كلمة المرور؟
+      </a>
     </form>
   );
 }

@@ -7,6 +7,7 @@ import { PeriodPicker } from '@/components/period-picker';
 import { Strata } from '@/components/dashboard/strata';
 import { CurveChart } from '@/components/dashboard/curve';
 import { KpiCard } from '@/components/dashboard/kpi-card';
+import { CountsPanel, countUnits } from '@/components/dashboard/counts';
 import { EmptyState, PageHeader, Panel, PanelHead, Notice } from '@/components/ui';
 import { fmtPct, fmtNum } from '@/lib/format';
 import { MONTHS, QUARTER_LABEL } from '@/lib/labels';
@@ -70,7 +71,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     const plans = yp.plans.filter((p) => p.quarter === period.quarter && (p.status === 'approved' || p.status === 'archived'));
     const months = [...new Set(b.map((w) => w.month))].map((m) => {
       const weeks = b.filter((w) => w.month === m).map((w) => w.weekIndex);
-      const steps = plans.flatMap((p) => p.activities.flatMap((a) => a.steps)).filter((s) => s.weeks.some((w) => weeks.includes(w)));
+      const mS = b.find((w) => w.month === m)!.start;
+      const mE = b.filter((w) => w.month === m).at(-1)!.end;
+      const steps = plans.flatMap((p) => p.activities.flatMap((a) => a.steps)).filter((s) => (s.weeks.length ? s.weeks.some((w) => weeks.includes(w)) : !!s.plannedEnd && (s.plannedStart ?? s.plannedEnd) <= mE && s.plannedEnd >= mS));
       const lastDay = b.filter((w) => w.month === m).at(-1)?.end ?? period.today;
       const asOf = lastDay < period.today ? lastDay : period.today;
       const evals = steps.map((s) => ({ s, e: evaluateStep(s, b, asOf) }));
@@ -105,23 +108,23 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       <div className="space-y-6">
         <Panel className="overflow-hidden">
           <div className="grid gap-0 lg:grid-cols-[18rem_1fr]">
-            <div className="flex flex-col justify-between gap-6 border-b border-line bg-sunken/60 p-6 lg:border-b-0 lg:border-l">
+            <div className="hero flex flex-col justify-between gap-6 p-6 text-white">
               <div>
-                <p className="text-sm text-muted">إنجاز الخطة التشغيلية</p>
+                <p className="text-sm text-white/70">إنجاز الخطة التشغيلية</p>
                 {org.computable ? (
-                  <p className="num mt-1 text-6xl font-bold tracking-tight text-ink" style={{ textAlign: 'right' }}>
+                  <p className="num mt-1 text-6xl font-bold tracking-tight text-white" style={{ textAlign: 'right' }}>
                     {fmtNum(org.progress)}
-                    <span className="text-3xl text-muted">٪</span>
+                    <span className="text-3xl text-orange">٪</span>
                   </p>
                 ) : (
                   <div className="mt-2">
-                    <p className="text-xl font-bold text-ink">غير قابل للاحتساب بعد</p>
-                    <p className="mt-1 text-sm text-muted">
+                    <p className="text-xl font-bold text-white">غير قابل للاحتساب بعد</p>
+                    <p className="mt-1 text-sm text-white/70">
                       {org.missingDepartments.length === 1 ? 'إدارة واحدة' : `${org.missingDepartments.length} إدارات`} بلا خطة معتمدة:{' '}
                       {org.missingDepartments.map((id) => deptName(depts, id, true)).join('، ')}
                     </p>
                     {org.partialProgress !== null && (
-                      <p className="mt-3 rounded-lg bg-surface px-3 py-2 text-sm">
+                      <p className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-sm">
                         مؤشر جزئي للإدارات المعتمدة: <span className="num font-bold">{fmtPct(org.partialProgress)}</span>
                       </p>
                     )}
@@ -130,12 +133,12 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
               </div>
               <dl className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <dt className="text-muted">المخطط حتى اليوم</dt>
+                  <dt className="text-white/70">المخطط حتى اليوم</dt>
                   <dd className="num text-lg font-semibold" style={{ textAlign: 'right' }}>{fmtPct(org.planned)}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted">الفارق</dt>
-                  <dd className="num text-lg font-semibold" style={{ textAlign: 'right', color: (org.progress ?? org.partialProgress ?? 0) >= (org.planned ?? 0) - 5 ? 'var(--done)' : 'var(--late)' }}>
+                  <dt className="text-white/70">الفارق</dt>
+                  <dd className="num text-lg font-semibold" style={{ textAlign: 'right', color: (org.progress ?? org.partialProgress ?? 0) >= (org.planned ?? 0) - 5 ? '#7fe0b8' : '#f4a63f' }}>
                     {org.planned === null ? '—' : fmtPct(Math.round(((org.progress ?? org.partialProgress ?? 0) - org.planned) * 10) / 10)}
                   </dd>
                 </div>
@@ -153,6 +156,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           </div>
         </Panel>
 
+        <CountsPanel c={countUnits(org.departments)} activitiesHref={(st) => `/activities?year=${period.year}&q=${period.quarter}${st ? `&state=${st}` : ''}`} />
+
         <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
           <Panel>
             <PanelHead title="المخطط مقابل المتحقق" hint="تراكمي خلال أسابيع الربع" />
@@ -161,7 +166,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             </div>
           </Panel>
           <Panel>
-            <PanelHead title="حالة الأنشطة" hint={`${counts.total} نشاطًا في خطط الربع المعتمدة`} />
+            <PanelHead title="حالة المشاريع والأنشطة" hint={`${counts.total} مشروعًا ونشاطًا في خطط الربع المعتمدة`} />
             <div className="px-5 pb-5">
               <div className="flex h-4 overflow-hidden rounded-full bg-sunken" aria-hidden>
                 {segs.map(([l, n, c]) => (n ? <div key={l} style={{ width: `${(n / Math.max(1, counts.total)) * 100}%`, background: c }} /> : null))}
@@ -185,7 +190,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                   <li key={m.m} className="flex items-center justify-between py-2">
                     <span>{MONTHS[m.m]}</span>
                     {m.future ? (
-                      <span className="text-muted">{m.scheduled} خطوة مجدولة</span>
+                      <span className="text-muted">{m.scheduled} مهمة مجدولة</span>
                     ) : (
                       <span className="flex gap-3">
                         <span className="text-muted">

@@ -1,7 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { evaluateQuarter, loadYearProgress, type YearProgress } from '../data/progress';
-import { loadActivities } from '../data/plans';
+import { loadActivities, stepFact } from '../data/plans';
 import { loadExecPlan } from '../data/kpis';
 import { evaluateStep, todayISO } from '../engine/progress';
 import { MONTHS, QUARTER_LABEL } from '../labels';
@@ -31,11 +31,11 @@ export interface ReportSnapshot {
     partialProgress: number | null;
     planned: number | null;
     missingDepartments: string[];
-    departments: { id: string; name: string; progress: number | null; planned: number | null; dataState: DataState; activities: number; completed: number; late: number; stalled: number }[];
+    departments: { id: string; name: string; progress: number | null; planned: number | null; dataState: DataState; activities: number; completed: number; late: number; stalled: number; steps?: number; stepsCompleted?: number; stepsLate?: number; projects?: number }[];
     quarters?: { quarter: number; progress: number | null; partial: number | null; computable: boolean; hasPlans: boolean }[];
     months?: { month: number; scheduled: number; done: number; late: number }[];
   };
-  achievements: { department: string; activity: string; step: string; date: string | null }[];
+  achievements: { department: string; activity: string; step: string; date: string | null; output?: string | null }[];
   completedActivities: { department: string; activity: string }[];
   lateItems: { department: string; activity: string; step: string; dueDate: string | null; daysLate: number; responsible: string | null }[];
   kpis: { axis: string; goal: string; name: string; unit: string | null; target: number | null; actual: number | null; achievement: number | null; status: KpiStatus; department: string | null }[];
@@ -85,6 +85,10 @@ export async function buildReportSnapshot(
       completed: d.activitiesCompleted,
       late: d.activitiesLate,
       stalled: d.activitiesStalled,
+      steps: d.stepsTotal,
+      stepsCompleted: d.stepsCompleted,
+      stepsLate: d.stepsLate,
+      projects: d.projectsTotal,
     })),
   };
 
@@ -112,10 +116,10 @@ export async function buildReportSnapshot(
     const p = planOf[a.plan_id];
     for (const s of a.steps) {
       if (s.status === 'completed' && (!s.actual_end || (s.actual_end >= periodStart && s.actual_end <= periodEnd))) {
-        achievements.push({ department: dn(p.departmentId), activity: a.title, step: s.title, date: s.actual_end });
+        achievements.push({ department: dn(p.departmentId), activity: a.title, step: s.title, date: s.actual_end, output: s.actual_output });
       }
-      const e = evaluateStep({ id: s.id, weight: s.weight, progress: s.progress, status: s.status, weeks: s.weeks }, yp.boundaries[p.quarter], asOf);
-      if (e.isLate) lateItems.push({ department: dn(p.departmentId), activity: a.title, step: s.title, dueDate: e.dueDate, daysLate: e.daysLate, responsible: s.assigneeName ?? s.responsible_text });
+      const e = evaluateStep(stepFact(s), yp.boundaries[p.quarter], asOf);
+      if (e.isLate) lateItems.push({ department: dn(p.departmentId), activity: a.title, step: s.title, dueDate: e.dueDate, daysLate: e.daysLate, responsible: s.assignees.length ? s.assignees.map((x) => x.name).join('، ') : s.responsible_text });
     }
   }
   achievements.sort((x, y) => (y.date ?? '').localeCompare(x.date ?? ''));
@@ -133,7 +137,7 @@ export async function buildReportSnapshot(
         month: m,
         scheduled: steps.length,
         done: steps.filter((s) => s.status === 'completed').length,
-        late: steps.filter((s) => evaluateStep({ id: s.id, weight: s.weight, progress: s.progress, status: s.status, weeks: s.weeks }, b, at).isLate).length,
+        late: steps.filter((s) => evaluateStep(stepFact(s), b, at).isLate).length,
       };
     });
   }

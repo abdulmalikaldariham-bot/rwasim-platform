@@ -14,10 +14,10 @@ export default async function Users() {
     <>
       <PageHeader back={{ href: '/settings', label: 'الإعدادات' }} title="المستخدمون والصلاحيات" sub="الدور يحدد ما يراه المستخدم ويعدله، ويُطبق داخل قاعدة البيانات نفسها." actions={<NewUser depts={d} />} />
       <Panel className="overflow-x-auto">
-        <table className="w-full min-w-[820px] text-sm">
+        <table className="w-full min-w-[860px] text-sm">
           <thead>
             <tr className="border-b border-line text-muted">
-              {['الاسم', 'البريد', 'الدور', 'الإدارة', 'الحالة', ''].map((h) => (
+              {['المستخدم', 'الدور', 'الإدارة', 'الحالة', ''].map((h) => (
                 <th key={h} className="px-4 py-3 text-right font-medium">
                   {h}
                 </th>

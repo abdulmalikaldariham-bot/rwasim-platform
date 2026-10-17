@@ -1,7 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/auth'];
+// لوحة العرض الخارجية عامة: تتحقق من الرابط في قاعدة البيانات لا من جلسة المستخدم
+const PUBLIC_PATHS = ['/login', '/auth', '/display', '/api/display', '/forgot-password'];
+// صفحة تعيين كلمة المرور تتحقق من الجلسة بنفسها
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
