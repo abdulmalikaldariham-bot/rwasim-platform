@@ -127,7 +127,8 @@ export function ReportDocument({
                 <tr>
                   <th>الإدارة</th>
                   <th style={{ width: '38%' }}>الإنجاز</th>
-                  <th>الأنشطة</th>
+                  <th>المشاريع والأنشطة</th>
+                  <th>المهام</th>
                   <th>حالة البيانات</th>
                 </tr>
               </thead>
@@ -142,8 +143,18 @@ export function ReportDocument({
                       </div>
                     </td>
                     <td>
-                      {d.completed}/{d.activities}
+                      {d.completed} من {d.activities} مكتملة
                       {d.late + d.stalled > 0 && <span className="warn"> ({d.late + d.stalled} متأخرة)</span>}
+                    </td>
+                    <td>
+                      {d.counts ? (
+                        <>
+                          {d.counts.tasks.completed} من {d.counts.tasks.total} مكتملة
+                          {d.counts.tasks.late > 0 && <span className="warn"> ({d.counts.tasks.late} متأخرة)</span>}
+                        </>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                     <td>{DATA_STATE[d.dataState]}</td>
                   </tr>
@@ -152,6 +163,40 @@ export function ReportDocument({
             </table>
           </div>
         </section>
+
+        {o.counts && (
+          <section className="avoid">
+            <h2>المشاريع والأنشطة والمهام</h2>
+            <div className="grid4">
+              <div className="box">
+                <div className="muted">المشاريع والأنشطة</div>
+                <div className="v">{o.counts.works.total}</div>
+                <div className="muted" style={{ fontSize: 10.5 }}>
+                  {o.counts.works.projects} مشروع · {o.counts.works.activities} نشاط
+                </div>
+              </div>
+              <div className="box">
+                <div className="muted">منها مكتملة / جارية</div>
+                <div className="v">
+                  {o.counts.works.completed} / {o.counts.works.inProgress}
+                </div>
+                <div className="muted" style={{ fontSize: 10.5 }}>متأخرة أو متعثرة: {o.counts.works.late}</div>
+              </div>
+              <div className="box">
+                <div className="muted">المهام التنفيذية</div>
+                <div className="v">{o.counts.tasks.total}</div>
+                <div className="muted" style={{ fontSize: 10.5 }}>كل مهمة تُعد مرة واحدة</div>
+              </div>
+              <div className="box">
+                <div className="muted">مهام مكتملة / متأخرة</div>
+                <div className="v">
+                  {o.counts.tasks.completed} / {o.counts.tasks.late}
+                </div>
+                <div className="muted" style={{ fontSize: 10.5 }}>جارية: {o.counts.tasks.inProgress}</div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {o.quarters && (
           <section className="avoid">

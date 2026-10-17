@@ -7,9 +7,9 @@ import { PeriodPicker } from '@/components/period-picker';
 import { ActivityFilters } from './filters';
 import { QUARTER_LABEL } from '@/lib/labels';
 
-export const metadata = { title: 'متابعة الأنشطة' };
+export const metadata = { title: 'المشاريع والأنشطة' };
 
-type SP = { year?: string; q?: string; dept?: string; state?: string; s?: string; weights?: string };
+type SP = { year?: string; q?: string; dept?: string; state?: string; s?: string; weights?: string; kind?: string; tasks?: string };
 
 export default async function Activities({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
@@ -23,8 +23,21 @@ export default async function Activities({ searchParams }: { searchParams: Promi
   const deptOf = (planId: string) => visible.find((p) => p.id === planId)!.department_id;
   const stateMatch = (st: string) => (sp.state === 'not_started' ? st === 'not_started' || st === 'upcoming' : st === sp.state);
   const q = (sp.s ?? '').trim();
+  const taskMatch = (a: (typeof acts)[number]) => {
+    if (!sp.tasks) return true;
+    return a.steps.some((st, i) => {
+      const e = a.eval.steps[i];
+      if (sp.tasks === 'completed') return st.status === 'completed';
+      if (sp.tasks === 'late') return st.status !== 'completed' && e?.isLate;
+      if (sp.tasks === 'in_progress') return st.status !== 'completed' && !e?.isLate && (st.status === 'in_progress' || st.status === 'on_hold' || st.progress > 0);
+      if (sp.tasks === 'not_started') return st.status === 'not_started' && !e?.isLate && st.progress === 0;
+      return true;
+    });
+  };
   const filtered = acts
+    .filter((a) => !sp.kind || (sp.kind === 'project' ? a.kind === 'project' : a.kind !== 'project'))
     .filter((a) => !sp.state || stateMatch(a.eval.state))
+    .filter(taskMatch)
     .filter((a) => !q || a.title.includes(q) || a.steps.some((s) => s.title.includes(q) || (s.responsible_text ?? '').includes(q)));
   const order = { stalled: 0, late: 1, in_progress: 2, not_started: 3, upcoming: 4, completed: 5 } as const;
   filtered.sort((x, y) => order[x.eval.state] - order[y.eval.state]);
@@ -34,11 +47,16 @@ export default async function Activities({ searchParams }: { searchParams: Promi
   return (
     <>
       <PageHeader
-        title="متابعة الأنشطة"
-        sub={`${QUARTER_LABEL[period.quarter]} ${period.year}م — ${filtered.length} نشاطًا${profile.role === 'dept_manager' ? ' في خطة إدارتك' : ''}`}
+        title="المشاريع والأنشطة"
+        sub={`${QUARTER_LABEL[period.quarter]} ${period.year}م — ${filtered.filter((a) => a.kind === 'project').length} مشروع · ${filtered.filter((a) => a.kind !== 'project').length} نشاط · ${filtered.reduce((n, a) => n + a.steps.length, 0)} مهمة${profile.role === 'dept_manager' ? ' في خطة إدارتك' : ''}`}
         actions={<PeriodPicker years={period.years.map((y) => y.year)} year={period.year} quarter={period.quarter} />}
       />
       <ActivityFilters depts={canPickDept ? depts.map((d) => ({ id: d.id, name: d.short_name ?? d.name })) : []} showWeights={showWeights} />
+      {sp.tasks && (
+        <p className="-mt-2 mb-4 text-sm text-muted">
+          تعرض المشاريع والأنشطة التي تحتوي مهام {{ completed: 'مكتملة', late: 'متأخرة', in_progress: 'جارية', not_started: 'لم تبدأ' }[sp.tasks] ?? ''}.
+        </p>
+      )}
       {filtered.length === 0 ? (
         <EmptyState title="لا أنشطة مطابقة" body="غيّر عوامل التصفية، أو تأكد من وجود خطط معتمدة لهذا الربع." />
       ) : (

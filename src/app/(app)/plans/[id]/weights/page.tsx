@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/ui';
 import { WeightsEditor } from './weights-editor';
 import { PLAN_STATUS, QUARTER_LABEL } from '@/lib/labels';
 
-export const metadata = { title: 'توزيع الأوزان' };
+export const metadata = { title: 'إدارة الأوزان' };
 
 export default async function WeightsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,7 +22,7 @@ export default async function WeightsPage({ params }: { params: Promise<{ id: st
     <>
       <PageHeader
         back={{ href: `/plans/${id}`, label: 'صفحة الخطة' }}
-        title="توزيع الأوزان"
+        title="إدارة الأوزان"
         sub={`${deptName(depts, plan.department_id)} — ${QUARTER_LABEL[plan.quarter]} ${plan.year}م — ${PLAN_STATUS[plan.status]}`}
       />
       <WeightsEditor

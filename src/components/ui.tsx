@@ -12,7 +12,7 @@ const btn: Record<BtnVariant, string> = {
   accent: 'bg-orange text-[#2b1700] hover:brightness-105',
 };
 const btnBase =
-  'inline-flex items-center justify-center gap-2 rounded-lg px-4 h-10 text-sm font-medium transition disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap';
+  'inline-flex items-center justify-center gap-2 rounded-xl px-4 h-10 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap';
 
 export function Button({ variant = 'primary', className, ...p }: ComponentProps<'button'> & { variant?: BtnVariant }) {
   return <button className={cn(btnBase, btn[variant], className)} {...p} />;
@@ -24,7 +24,7 @@ export function ButtonLink({ variant = 'primary', className, ...p }: ComponentPr
 // ---------- لوحات ----------
 export function Panel({ className, children, ...p }: ComponentProps<'section'>) {
   return (
-    <section className={cn('rounded-xl border border-line bg-surface', className)} {...p}>
+    <section className={cn('rounded-2xl border border-line bg-surface shadow-[var(--shadow)]', className)} {...p}>
       {children}
     </section>
   );
@@ -50,7 +50,7 @@ export function PageHeader({ title, sub, actions, back }: { title: ReactNode; su
             <span aria-hidden>›</span> {back.label}
           </Link>
         )}
-        <h1 className="text-2xl font-bold leading-tight text-ink sm:text-[1.75rem]">{title}</h1>
+        <h1 className="text-2xl font-bold leading-tight text-ink sm:text-[1.8rem]">{title}</h1>
         {sub && <p className="mt-1 max-w-3xl text-[0.95rem] text-muted">{sub}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -132,7 +132,10 @@ export function ProgressBar({ value, tone = 'teal', planned, size = 'md', label 
 
 export function EmptyState({ title, body, action }: { title: string; body?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="strata-bg flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line px-6 py-12 text-center">
+    <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-surface/60 px-6 py-12 text-center">
+      <svg width="44" height="22" viewBox="0 0 44 22" aria-hidden className="mb-1">
+        <path d="M2 18 C 12 4, 22 4, 30 12 S 40 18, 42 6" fill="none" stroke="var(--orange)" strokeWidth="3" strokeLinecap="round" />
+      </svg>
       <p className="text-base font-semibold text-ink">{title}</p>
       {body && <div className="max-w-md text-sm text-muted">{body}</div>}
       {action && <div className="mt-2">{action}</div>}
@@ -150,7 +153,7 @@ export function Notice({ tone = 'teal', children, title }: { tone?: Tone; childr
 }
 
 // ---------- النماذج ----------
-const field = 'w-full rounded-lg border border-line bg-surface px-3 h-10 text-sm text-text placeholder:text-muted/70 focus:border-teal focus:outline-none';
+const field = 'w-full rounded-xl border border-line bg-surface px-3 h-10 text-sm text-text placeholder:text-muted/70 focus:border-teal focus:outline-none';
 export function Input({ className, ...p }: ComponentProps<'input'>) {
   return <input className={cn(field, className)} {...p} />;
 }

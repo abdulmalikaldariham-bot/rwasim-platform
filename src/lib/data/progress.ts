@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { evaluateOrg, todayISO } from '../engine/progress';
 import type { ActivityKind, DeptWeight, OrgEval, PlanFact, PlanStatus, StepStatus, WeekBoundary } from '../engine/types';
 
-interface FactRow {
+export interface FactRow {
   department_id: string;
   plan_id: string;
   quarter: number;
@@ -19,6 +19,9 @@ interface FactRow {
   weeks: number[];
   last_update_at: string | null;
   actual_end: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  dates_source?: 'weeks' | 'manual' | 'none' | null;
 }
 
 export interface YearProgress {
@@ -29,18 +32,24 @@ export interface YearProgress {
   boundaries: Record<number, WeekBoundary[]>;
 }
 
-export async function loadYearProgress(sb: SupabaseClient, year: number): Promise<YearProgress> {
-  const [facts, weights, weeks] = await Promise.all([
-    sb.rpc('get_progress_facts', { p_year: year, p_quarter: null }),
-    sb.rpc('get_dept_weights', { p_year: year }),
-    sb.from('quarter_weeks').select('*').eq('year', year).order('quarter').order('week_index'),
-  ]);
-  if (facts.error) throw new Error(facts.error.message);
-  if (weights.error) throw new Error(weights.error.message);
-  if (weeks.error) throw new Error(weeks.error.message);
+export interface WeekRow {
+  quarter: number;
+  week_index: number;
+  month: number;
+  week_of_month: number;
+  start_date: string;
+  end_date: string;
+}
 
+/** تحويل صفوف الحقائق (من get_progress_facts أو share_dashboard) إلى مدخلات المحرك */
+export function buildYearProgress(
+  year: number,
+  facts: FactRow[],
+  weights: { department_id: string; weight: number; set_version?: number }[],
+  weeks: WeekRow[],
+): YearProgress {
   const plans = new Map<string, PlanFact>();
-  for (const r of (facts.data ?? []) as FactRow[]) {
+  for (const r of facts) {
     let p = plans.get(r.plan_id);
     if (!p) {
       p = { id: r.plan_id, departmentId: r.department_id, quarter: r.quarter, status: r.plan_status, version: r.plan_version, activities: [] };
@@ -60,23 +69,36 @@ export async function loadYearProgress(sb: SupabaseClient, year: number): Promis
         weeks: r.weeks ?? [],
         lastUpdateAt: r.last_update_at,
         actualEnd: r.actual_end,
+        startDate: r.start_date ?? null,
+        endDate: r.end_date ?? null,
+        datesSource: r.dates_source ?? null,
       });
     }
   }
 
   const boundaries: Record<number, WeekBoundary[]> = { 1: [], 2: [], 3: [], 4: [] };
-  for (const w of (weeks.data ?? []) as { quarter: number; week_index: number; month: number; week_of_month: number; start_date: string; end_date: string }[]) {
-    boundaries[w.quarter].push({ weekIndex: w.week_index, month: w.month, weekOfMonth: w.week_of_month, start: w.start_date, end: w.end_date });
+  for (const w of weeks) {
+    boundaries[w.quarter]?.push({ weekIndex: w.week_index, month: w.month, weekOfMonth: w.week_of_month, start: w.start_date, end: w.end_date });
   }
-
-  const wrows = (weights.data ?? []) as { department_id: string; weight: number; set_version: number }[];
   return {
     year,
-    weights: wrows.map((w) => ({ departmentId: w.department_id, weight: Number(w.weight) })),
-    weightsVersion: wrows[0]?.set_version ?? null,
+    weights: weights.map((w) => ({ departmentId: w.department_id, weight: Number(w.weight) })),
+    weightsVersion: weights[0]?.set_version ?? null,
     plans: [...plans.values()],
     boundaries,
   };
+}
+
+export async function loadYearProgress(sb: SupabaseClient, year: number): Promise<YearProgress> {
+  const [facts, weights, weeks] = await Promise.all([
+    sb.rpc('get_progress_facts', { p_year: year, p_quarter: null }),
+    sb.rpc('get_dept_weights', { p_year: year }),
+    sb.from('quarter_weeks').select('*').eq('year', year).order('quarter').order('week_index'),
+  ]);
+  if (facts.error) throw new Error(facts.error.message);
+  if (weights.error) throw new Error(weights.error.message);
+  if (weeks.error) throw new Error(weeks.error.message);
+  return buildYearProgress(year, (facts.data ?? []) as FactRow[], (weights.data ?? []) as { department_id: string; weight: number; set_version: number }[], (weeks.data ?? []) as WeekRow[]);
 }
 
 export function quarterOf(dateISO: string): number {

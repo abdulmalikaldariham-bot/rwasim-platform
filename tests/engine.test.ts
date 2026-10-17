@@ -201,3 +201,61 @@ describe('الجدولة والتأخر', () => {
     expect(c[2].actual).toBeNull(); // أسبوع لم يبدأ
   });
 });
+
+// ---------------------------------------------------------------------
+// الإصدار الثاني: الإنجاز الفردي، الحالة الزمنية، التواريخ اليدوية، العدادات المنفصلة
+// ---------------------------------------------------------------------
+import { computeIndividualProgress, timeStateOf, evaluateStep as evalStep2, evaluateDepartment as evalDept2 } from '../src/lib/engine/progress';
+import { deptCounts } from '../src/lib/engine/counts';
+
+describe('الإصدار الثاني', () => {
+  it('الإنجاز الفردي: يكتمل بالعتبة الجماعية ولا يغلقه شخص واحد', () => {
+    expect(computeIndividualProgress(1, 3, 100)).toEqual({ progress: 33.33, completed: false });
+    expect(computeIndividualProgress(3, 3, 100)).toEqual({ progress: 100, completed: true });
+    expect(computeIndividualProgress(2, 4, 50)).toEqual({ progress: 100, completed: true });
+    expect(computeIndividualProgress(0, 0, 100)).toEqual({ progress: 0, completed: false });
+  });
+
+  it('الحالة الزمنية منفصلة عن حالة التنفيذ', () => {
+    expect(timeStateOf('not_started', '2026-10-10', '2026-10-20', '2026-10-05')).toBe('upcoming');
+    expect(timeStateOf('in_progress', '2026-10-10', '2026-10-20', '2026-10-15')).toBe('in_window');
+    expect(timeStateOf('in_progress', '2026-10-10', '2026-10-20', '2026-10-25')).toBe('overdue');
+    expect(timeStateOf('completed', '2026-10-10', '2026-10-20', '2026-10-25')).toBe('done');
+    expect(timeStateOf('not_started', null, null, '2026-10-25')).toBe('unscheduled');
+  });
+
+  const B: WeekBoundary[] = Array.from({ length: 12 }, (_, i) => {
+    const s = new Date(Date.UTC(2026, 9, 1 + i * 7));
+    const e = new Date(Date.UTC(2026, 9, 7 + i * 7));
+    return { weekIndex: i + 1, month: 10 + Math.floor(i / 4), weekOfMonth: (i % 4) + 1, start: s.toISOString().slice(0, 10), end: e.toISOString().slice(0, 10) };
+  });
+
+  it('التاريخ اليدوي يتقدم على الأسابيع في الموعد والتأخر', () => {
+    const s: StepFact = { id: 's', weight: 100, progress: 0, status: 'not_started', weeks: [1], startDate: '2026-11-01', endDate: '2026-11-10', datesSource: 'manual' };
+    const e = evalStep2(s, B, '2026-10-20');
+    expect(e.dueDate).toBe('2026-11-10');
+    expect(e.isLate).toBe(false);
+    expect(e.timeState).toBe('upcoming');
+  });
+
+  it('العدادات: المشاريع والأنشطة منفصلة عن المهام ولا تؤثر في الإنجاز', () => {
+    const plan: PlanFact = {
+      id: 'p',
+      departmentId: 'd',
+      quarter: 4,
+      status: 'approved',
+      activities: [
+        { id: 'a1', weight: 60, kind: 'project', steps: [
+          { id: 'x1', weight: 40, progress: 100, status: 'completed', weeks: [1] },
+          { id: 'x2', weight: 60, progress: 0, status: 'not_started', weeks: [10] },
+        ] },
+        { id: 'a2', weight: 40, kind: 'recurring', steps: [{ id: 'y1', weight: 100, progress: 100, status: 'completed', weeks: [1] }] },
+      ],
+    };
+    const d = evalDept2('d', plan, B, { asOf: '2026-10-20' });
+    expect(d.progress).toBe(0.4 * 60 + 40);
+    const c = deptCounts(d, plan);
+    expect(c.works).toMatchObject({ total: 2, projects: 1, activities: 1, completed: 1 });
+    expect(c.tasks).toMatchObject({ total: 3, completed: 2 });
+  });
+});

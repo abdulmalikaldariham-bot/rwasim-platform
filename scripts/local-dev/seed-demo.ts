@@ -87,7 +87,7 @@ async function main() {
       await sb.rpc('update_step_progress', { p_step: s.id, p_status: 'in_progress', p_note: '[تجريبي] دورة أكتوبر', p_done_substeps: [subs[0].id] });
       n++;
     } else if (max <= 1 || (max === 2 && n % 3 !== 0)) {
-      await sb.rpc('update_step_progress', { p_step: s.id, p_status: 'completed', p_note: '[تجريبي] أنجزت' });
+      await sb.rpc('update_step_progress', { p_step: s.id, p_status: 'completed', p_note: '[تجريبي] أنجزت', p_output_achieved: '[تجريبي] تحقق المخرج' });
       n++;
     } else if (weeks.includes(3)) {
       await sb.rpc('update_step_progress', { p_step: s.id, p_status: 'in_progress', p_note: '[تجريبي] قيد العمل' });
@@ -107,6 +107,65 @@ async function main() {
     created_by: ids.ed,
   });
   await users.proj.from('escalations').insert({ kind: 'decision', department_id: d.PROJ, title: '[تجريبي] اعتماد موازنة رحلة بادية رواسم', raised_by: ids.proj });
+
+  // خطة تنفيذية تجريبية صغيرة (محوران، 3 أهداف، 6 مؤشرات) لعرض المحور التنفيذي
+  {
+    const ed = users.ed;
+    const { data: plan, error } = await ed.from('exec_plans').insert({ year: 2026, title: '[تجريبي] الخطة التنفيذية 2026م', created_by: ids.ed }).select('id').single();
+    if (error) throw error;
+    const axes = [
+      { title: 'الأثر المجتمعي', goals: [
+        { title: 'توسيع نطاق المستفيدين من البرامج', kpis: [
+          { name: 'عدد المستفيدين من البرامج', unit: 'مستفيد', target: 1200, baseline: 0, actual: 870, dept: 'PROJ' },
+          { name: 'نسبة رضا المستفيدين', unit: null, type: 'percentage', target: 85, actual: 88, dept: 'PROJ' },
+        ] },
+        { title: 'تعزيز الحضور الإعلامي للجمعية', kpis: [
+          { name: 'عدد المواد الإعلامية المنشورة', unit: 'مادة', target: 60, baseline: 0, actual: 31, dept: 'COMM' },
+          { name: 'نمو المتابعين في المنصات', unit: 'متابع', target: 5000, baseline: 0, actual: null, dept: 'COMM' },
+        ] },
+      ] },
+      { title: 'الاستدامة المؤسسية', goals: [
+        { title: 'رفع كفاءة التشغيل', kpis: [
+          { name: 'نسبة الالتزام بالخطة التشغيلية', unit: null, type: 'percentage', target: 90, actual: 64, dept: 'EXEC' },
+          { name: 'متوسط مدة إغلاق طلبات الشراء', unit: 'يوم', target: 7, baseline: 15, actual: 9, dept: 'SUPP', decrease: true },
+        ] },
+      ] },
+    ];
+    const measures: { kpi_id: string; value: number }[] = [];
+    let ax = 0;
+    for (const a of axes) {
+      const { data: axis } = await ed.from('exec_axes').insert({ plan_id: plan.id, title: a.title, sort_order: ++ax }).select('id').single();
+      let gi = 0;
+      for (const g of a.goals) {
+        const { data: goal } = await ed.from('exec_goals').insert({ plan_id: plan.id, axis_id: axis!.id, title: g.title, sort_order: ++gi }).select('id').single();
+        let ki = 0;
+        for (const k of g.kpis as { name: string; unit: string | null; type?: string; target: number; baseline?: number; actual: number | null; dept: string; decrease?: boolean }[]) {
+          const { data: kpi, error: ke } = await ed
+            .from('kpis')
+            .insert({
+              plan_id: plan.id,
+              goal_id: goal!.id,
+              name: k.name,
+              unit: k.unit,
+              kpi_type: k.type ?? 'numeric',
+              direction: k.decrease ? 'decrease' : 'increase',
+              baseline: k.baseline ?? null,
+              annual_target: k.target,
+              department_id: d[k.dept],
+              sort_order: ax * 100 + gi * 10 + ++ki,
+            })
+            .select('id')
+            .single();
+          if (ke) throw ke;
+          if (k.actual !== null) measures.push({ kpi_id: kpi!.id, value: k.actual });
+        }
+      }
+    }
+    await ed.from('exec_plans').update({ status: 'approved', approved_by: ids.ed, approved_at: new Date().toISOString() }).eq('id', plan.id);
+    // القياسات تُسجل بعد الاعتماد (سياسة الجدول)
+    const { error: me } = await ed.from('kpi_measurements').insert(measures.map((m) => ({ ...m, quarter: 3, measured_on: '2026-09-30', note: '[تجريبي]', recorded_by: ids.ed })));
+    if (me) throw me;
+  }
 
   console.log(`✓ بيانات تجريبية: ${Object.keys(ids).length} حسابات، ${Object.keys(planIds).length} خطط، ${n} تحديثات`);
   console.log(`  كلمة المرور الموحدة: ${PASSWORD}`);

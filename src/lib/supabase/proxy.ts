@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/auth'];
+// /share و /api/share: لوحة العرض الخارجية — تحميها دوال قاعدة البيانات بالرمز لا بالجلسة
+const PUBLIC_PATHS = ['/login', '/auth', '/share/', '/api/share/'];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

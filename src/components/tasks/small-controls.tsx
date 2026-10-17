@@ -8,7 +8,7 @@ export function AssignSelect({ stepId, value, people }: { stepId: string; value:
   const [pending, start] = useTransition();
   return (
     <select
-      aria-label="تفويض الخطوة"
+      aria-label="تفويض المهمة"
       disabled={pending}
       defaultValue={value ?? ''}
       className="h-8 max-w-44 rounded-md border border-line bg-surface px-2 text-xs"

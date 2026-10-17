@@ -2,7 +2,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Plus } from 'lucide-react';
+import { MoreHorizontal, Plus } from 'lucide-react';
 import { Dialog } from '@/components/dialog';
 import { Button, Input, Label, Pill, Select } from '@/components/ui';
 import { createUserAction, resetPasswordAction, updateUserAction } from '@/app/actions/settings';
@@ -10,12 +10,26 @@ import { ROLE_LABELS } from '@/lib/labels';
 
 const ROLES = ['executive_director', 'dept_manager', 'employee', 'board_member', 'system_admin'];
 
-function PasswordNotice({ email, password, onClose }: { email: string; password: string; onClose: () => void }) {
+function AccessNotice({ email, password, link, onClose }: { email: string; password?: string; link?: string; onClose: () => void }) {
+  const value = link ?? password ?? '';
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()} title="كلمة المرور المؤقتة" description="تظهر مرة واحدة فقط. سلّمها للمستخدم بطريقة آمنة، وسيغيرها من صفحة حسابه.">
-      <p className="text-sm">{email}</p>
-      <p className="num mt-2 rounded-lg bg-sunken px-3 py-3 text-center text-lg font-bold select-all">{password}</p>
-      <Button className="mt-4 w-full" onClick={() => navigator.clipboard.writeText(password).then(() => toast.success('نُسخت'))}>
+    <Dialog
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={link ? 'رابط التفعيل' : 'كلمة المرور المؤقتة'}
+      description={
+        link
+          ? 'يظهر مرة واحدة. أرسله للمستخدم بطريقة آمنة؛ يُستخدم مرة واحدة لتعيين كلمة مروره بنفسه، وتنتهي صلاحيته بعد مدة محدودة.'
+          : 'تظهر مرة واحدة ولا تُحفظ في المنصة. سلّمها للمستخدم بطريقة آمنة؛ سيُطلب منه تغييرها فور دخوله.'
+      }
+    >
+      <p className="text-sm text-muted" dir="ltr" style={{ textAlign: 'right' }}>
+        {email}
+      </p>
+      <p className={`num mt-2 rounded-lg bg-sunken px-3 py-3 text-center font-bold break-all select-all ${link ? 'text-xs' : 'text-lg'}`} dir="ltr">
+        {value}
+      </p>
+      <Button className="mt-4 w-full" onClick={() => navigator.clipboard.writeText(value).then(() => toast.success('نُسخ'))}>
         نسخ
       </Button>
     </Dialog>
@@ -24,8 +38,8 @@ function PasswordNotice({ email, password, onClose }: { email: string; password:
 
 export function NewUser({ depts }: { depts: { id: string; name: string }[] }) {
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ email: '', full_name: '', role: 'employee', department_id: '', job_title: '' });
-  const [pw, setPw] = useState<{ email: string; password: string } | null>(null);
+  const [f, setF] = useState({ email: '', full_name: '', role: 'employee', department_id: '', job_title: '', method: 'invite' as 'invite' | 'temp' });
+  const [pw, setPw] = useState<{ email: string; password?: string; link?: string } | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
   const needsDept = f.role === 'dept_manager' || f.role === 'employee';
@@ -67,6 +81,25 @@ export function NewUser({ depts }: { depts: { id: string; name: string }[] }) {
               </Select>
             </div>
           </div>
+          <fieldset>
+            <legend className="mb-1.5 text-sm font-medium text-text">طريقة تسليم الحساب</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(
+                [
+                  ['invite', 'رابط تفعيل', 'يعيّن المستخدم كلمة مروره بنفسه (موصى به)'],
+                  ['temp', 'كلمة مرور مؤقتة', 'فريدة وعشوائية، يغيّرها عند أول دخول'],
+                ] as const
+              ).map(([k, t, d]) => (
+                <label key={k} className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 ${f.method === k ? 'border-teal bg-teal-soft/50' : 'border-line'}`}>
+                  <input type="radio" name="method" checked={f.method === k} onChange={() => setF({ ...f, method: k })} className="mt-1 accent-[var(--teal)]" />
+                  <span>
+                    <span className="block text-sm font-medium text-ink">{t}</span>
+                    <span className="block text-xs text-muted">{d}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <div>
             <Label htmlFor="uj" hint="اختياري">المسمى الوظيفي</Label>
             <Input id="uj" value={f.job_title} onChange={(e) => setF({ ...f, job_title: e.target.value })} />
@@ -79,8 +112,8 @@ export function NewUser({ depts }: { depts: { id: string; name: string }[] }) {
                 const r = await createUserAction({ ...f, department_id: f.department_id || null });
                 if (!r.ok) return void toast.error(r.error);
                 setOpen(false);
-                setPw({ email: f.email, password: r.password });
-                setF({ email: '', full_name: '', role: 'employee', department_id: '', job_title: '' });
+                setPw({ email: f.email, password: r.password, link: r.link });
+                setF({ email: '', full_name: '', role: 'employee', department_id: '', job_title: '', method: 'invite' });
                 router.refresh();
               })
             }
@@ -89,7 +122,7 @@ export function NewUser({ depts }: { depts: { id: string; name: string }[] }) {
           </Button>
         </div>
       </Dialog>
-      {pw && <PasswordNotice {...pw} onClose={() => setPw(null)} />}
+      {pw && <AccessNotice {...pw} onClose={() => setPw(null)} />}
     </>
   );
 }
@@ -104,7 +137,7 @@ export function UserRow({
   self: boolean;
 }) {
   const [pending, start] = useTransition();
-  const [pw, setPw] = useState<string | null>(null);
+  const [pw, setPw] = useState<{ password?: string; link?: string } | null>(null);
   const router = useRouter();
   const upd = (patch: Parameters<typeof updateUserAction>[1]) =>
     start(async () => {
@@ -144,7 +177,11 @@ export function UserRow({
       </td>
       <td className="px-4 py-2.5 whitespace-nowrap">
         {!self && (
-          <>
+          <details className="relative">
+            <summary className="flex h-8 cursor-pointer list-none items-center gap-1 rounded-lg px-2 text-xs text-teal hover:bg-teal-soft [&::-webkit-details-marker]:hidden">
+              <MoreHorizontal size={16} /> إجراءات
+            </summary>
+            <div className="absolute end-0 z-10 mt-1 flex w-40 flex-col items-stretch rounded-xl border border-line bg-surface p-1 shadow-lg [&>button]:justify-start">
             <Button variant="ghost" className="h-8 px-2 text-xs" disabled={pending} onClick={() => upd({ is_active: !u.is_active })}>
               {u.is_active ? 'تعطيل' : 'تفعيل'}
             </Button>
@@ -153,18 +190,33 @@ export function UserRow({
               className="h-8 px-2 text-xs"
               disabled={pending}
               onClick={() =>
-                confirm('إنشاء كلمة مرور مؤقتة جديدة؟') &&
+                confirm('إنشاء رابط استعادة لهذا المستخدم؟ سيُطلب منه تعيين كلمة مرور جديدة.') &&
                 start(async () => {
-                  const r = await resetPasswordAction(u.id);
-                  r.ok ? setPw(r.password) : toast.error(r.error);
+                  const r = await resetPasswordAction(u.id, 'link');
+                  r.ok ? setPw({ link: r.link }) : toast.error(r.error);
                 })
               }
             >
-              كلمة مرور مؤقتة
+              رابط استعادة
             </Button>
-          </>
+            <Button
+              variant="ghost"
+              className="h-8 px-2 text-xs"
+              disabled={pending}
+              onClick={() =>
+                confirm('إنشاء كلمة مرور مؤقتة جديدة؟ ستتوقف كلمة المرور الحالية فورًا.') &&
+                start(async () => {
+                  const r = await resetPasswordAction(u.id, 'temp');
+                  r.ok ? setPw({ password: r.password }) : toast.error(r.error);
+                })
+              }
+            >
+              كلمة مؤقتة
+            </Button>
+            </div>
+          </details>
         )}
-        {pw && <PasswordNotice email={u.email ?? ''} password={pw} onClose={() => setPw(null)} />}
+        {pw && <AccessNotice email={u.email ?? ''} {...pw} onClose={() => setPw(null)} />}
       </td>
     </tr>
   );

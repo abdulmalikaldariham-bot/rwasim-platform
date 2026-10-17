@@ -28,7 +28,7 @@ export function ActivityCard({ a, dept, href, showWeight }: { a: ActivityRow; de
         <span className="num w-14 shrink-0 text-left text-lg font-bold text-ink">{fmtPct(a.eval.progress)}</span>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-y-1 text-sm">
-        <dt className="text-muted">الخطوات</dt>
+        <dt className="text-muted">المهام</dt>
         <dd className="text-left">
           <span className="num font-semibold text-done">{a.eval.stepsCompleted}</span> مكتملة، <span className="num">{remaining}</span> متبقية
           {a.eval.lateSteps > 0 && <span className="text-late"> ({a.eval.lateSteps} متأخرة)</span>}

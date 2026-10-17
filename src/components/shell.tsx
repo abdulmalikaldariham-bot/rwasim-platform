@@ -12,6 +12,7 @@ import {
   ListChecks,
   LogOut,
   Menu,
+  MonitorPlay,
   Moon,
   Settings,
   Sun,
@@ -30,7 +31,9 @@ const NAV: Record<Role, Item[]> = {
   executive_director: [
     { href: '/dashboard', label: 'لوحة الأداء', icon: Gauge },
     { href: '/executive', label: 'مركز المتابعة التنفيذية', icon: Target },
-    { href: '/activities', label: 'متابعة الأنشطة', icon: LayoutGrid },
+    { href: '/my-tasks', label: 'مهامي', icon: ClipboardList },
+    { href: '/activities', label: 'المشاريع والأنشطة', icon: LayoutGrid },
+    { href: '/share-links', label: 'روابط عرض الأداء', icon: MonitorPlay },
     { href: '/workspace', label: 'مساحات عمل الإدارات', icon: ListChecks },
     { href: '/plans', label: 'الخطط التشغيلية', icon: FolderKanban },
     { href: '/executive-plan', label: 'الخطة التنفيذية', icon: ChartColumn },
@@ -40,7 +43,7 @@ const NAV: Record<Role, Item[]> = {
   dept_manager: [
     { href: '/workspace', label: 'مساحة عمل الإدارة', icon: ListChecks },
     { href: '/my-tasks', label: 'مهامي', icon: ClipboardList },
-    { href: '/activities', label: 'متابعة الأنشطة', icon: LayoutGrid },
+    { href: '/activities', label: 'المشاريع والأنشطة', icon: LayoutGrid },
     { href: '/plans', label: 'خطط الإدارة', icon: FolderKanban },
     { href: '/dashboard', label: 'لوحة الأداء', icon: Gauge },
     { href: '/executive-plan', label: 'الخطة التنفيذية', icon: ChartColumn },
@@ -52,12 +55,13 @@ const NAV: Record<Role, Item[]> = {
   ],
   board_member: [
     { href: '/dashboard', label: 'لوحة الأداء', icon: Gauge },
-    { href: '/activities', label: 'الأنشطة', icon: LayoutGrid },
+    { href: '/activities', label: 'المشاريع والأنشطة', icon: LayoutGrid },
     { href: '/executive-plan', label: 'الخطة التنفيذية', icon: ChartColumn },
     { href: '/reports', label: 'التقارير المعتمدة', icon: FileText },
   ],
   system_admin: [
     { href: '/settings/users', label: 'المستخدمون', icon: Users },
+    { href: '/my-tasks', label: 'مهامي', icon: ClipboardList },
     { href: '/settings', label: 'الإعدادات', icon: Settings },
     { href: '/settings/audit', label: 'سجل التغييرات', icon: ScrollText },
     { href: '/dashboard', label: 'لوحة الأداء', icon: Gauge },
