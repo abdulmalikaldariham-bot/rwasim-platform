@@ -1,0 +1,143 @@
+@import 'tailwindcss';
+@import '@fontsource/ibm-plex-sans-arabic/400.css';
+@import '@fontsource/ibm-plex-sans-arabic/500.css';
+@import '@fontsource/ibm-plex-sans-arabic/600.css';
+@import '@fontsource/ibm-plex-sans-arabic/700.css';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* ===== هوية رواسم =====
+   كحلي #013047 للحبر والتنقل، فيروزي #326e7c للأساس، برتقالي #f09223 للتنبيه
+   ورق بارد مائل للنعناع بدل الأبيض الدافئ */
+:root {
+  --ink: #013047;
+  --teal: #326e7c;
+  --teal-soft: #e3eef0;
+  --orange: #f09223;
+  --orange-soft: #fdf0e1;
+  --paper: #f4f7f7;
+  --surface: #ffffff;
+  --sunken: #eaf0f1;
+  --line: #d7e2e4;
+  --text: #0d2b3a;
+  --muted: #5b7380;
+  --done: #2c8a6a;
+  --done-soft: #e2f2ec;
+  --late: #d9771a;
+  --stalled: #b8443c;
+  --stalled-soft: #f8e7e5;
+  --nodata: #93a6ad;
+  --focus: #f09223;
+  --nav: #013047;
+  --nav-text: #cfe0e4;
+}
+
+[data-theme='dark'] {
+  --ink: #e7f1f3;
+  --teal: #6fb3c2;
+  --teal-soft: #15343f;
+  --orange: #f5a54a;
+  --orange-soft: #3a2a17;
+  --paper: #071a22;
+  --surface: #0c2530;
+  --sunken: #0a1f28;
+  --line: #1d3c48;
+  --text: #e2edf0;
+  --muted: #8fa9b2;
+  --done: #4fbf97;
+  --done-soft: #123a30;
+  --late: #f5a54a;
+  --stalled: #e57b72;
+  --stalled-soft: #3b1d1b;
+  --nodata: #5f7881;
+  --nav: #04141b;
+  --nav-text: #a9c4cb;
+}
+
+@theme inline {
+  --font-sans: 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --color-ink: var(--ink);
+  --color-teal: var(--teal);
+  --color-teal-soft: var(--teal-soft);
+  --color-orange: var(--orange);
+  --color-orange-soft: var(--orange-soft);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-done: var(--done);
+  --color-done-soft: var(--done-soft);
+  --color-late: var(--late);
+  --color-stalled: var(--stalled);
+  --color-stalled-soft: var(--stalled-soft);
+  --color-nodata: var(--nodata);
+  --color-nav: var(--nav);
+  --color-nav-text: var(--nav-text);
+}
+
+html {
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  background: var(--paper);
+  min-height: 100dvh;
+  font-feature-settings: 'tnum' 1;
+  line-height: 1.6;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* طبقات الرواسب: خطوط أفقية خفيفة تستحضر اسم الجمعية */
+.strata-bg {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 11px,
+    color-mix(in oklab, var(--line) 55%, transparent) 11px 12px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes settle {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.settle {
+  transform-origin: right;
+  animation: settle 900ms cubic-bezier(0.2, 0.7, 0.1, 1) both;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+}
