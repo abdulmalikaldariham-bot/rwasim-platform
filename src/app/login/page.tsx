@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSession, homeFor } from '@/lib/auth';
-import { Wordmark } from '@/components/brand';
+import { Logo } from '@/components/brand';
 import { LoginForm } from './login-form';
 
 export const metadata = { title: 'تسجيل الدخول' };
@@ -13,8 +13,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <main className="grid min-h-dvh lg:grid-cols-[1fr_1.1fr]">
       <section className="flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm">
-          <div className="mb-10 lg:hidden">
-            <Wordmark light={false} />
+          <div className="mb-10 flex justify-center lg:hidden">
+            <Logo onSurface className="w-44" />
           </div>
           <h1 className="text-2xl font-bold text-ink">تسجيل الدخول</h1>
           <p className="mt-1 mb-8 text-sm text-muted">استخدم البريد الذي أضافه لك مسؤول النظام.</p>
@@ -24,7 +24,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       </section>
       <aside className="relative hidden overflow-hidden bg-nav lg:block" aria-hidden>
         <div className="absolute inset-0 flex flex-col justify-between p-12">
-          <Wordmark />
+          <div>
+            <Logo light className="w-64 xl:w-72" />
+            <p className="mt-5 text-lg font-medium text-white">منصة الأداء المؤسسي</p>
+          </div>
           <div className="space-y-3">
             {[92, 74, 86, 63, 80].map((w, i) => (
               <div key={i} className="h-10 overflow-hidden rounded-md bg-white/5">
