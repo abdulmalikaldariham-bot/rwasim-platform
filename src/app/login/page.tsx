@@ -5,7 +5,7 @@ import { LoginForm } from './login-form';
 
 export const metadata = { title: 'تسجيل الدخول' };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; inactive?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; inactive?: string; link?: string }> }) {
   const sp = await searchParams;
   const s = await getSession();
   if (s && s.profile.is_active) redirect(homeFor(s.profile.role));
@@ -18,11 +18,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </div>
           <h1 className="text-2xl font-bold text-ink">تسجيل الدخول</h1>
           <p className="mt-1 mb-8 text-sm text-muted">استخدم البريد الذي أضافه لك مسؤول النظام.</p>
+          {sp.link === 'expired' && <p className="mb-4 rounded-lg bg-orange-soft px-3 py-2 text-sm text-late">انتهت صلاحية الرابط أو استُخدم من قبل. اطلب رابطًا جديدًا من «نسيت كلمة المرور» أو من مسؤول النظام.</p>}
           {sp.inactive && <p className="mb-4 rounded-lg bg-stalled-soft px-3 py-2 text-sm text-stalled">هذا الحساب معطّل. تواصل مع مسؤول النظام.</p>}
           <LoginForm next={sp.next} />
         </div>
       </section>
-      <aside className="relative hidden overflow-hidden bg-nav lg:block" aria-hidden>
+      <aside className="brand-hero relative hidden overflow-hidden lg:block" aria-hidden>
         <div className="absolute inset-0 flex flex-col justify-between p-12">
           <div>
             <Logo light className="w-64 xl:w-72" />

@@ -1,7 +1,8 @@
 import 'server-only';
+import { deptCounts, emptyCounts, type WorkCounts } from '../engine/counts';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { evaluateQuarter, loadYearProgress, type YearProgress } from '../data/progress';
-import { loadActivities } from '../data/plans';
+import { loadActivities, stepFact } from '../data/plans';
 import { loadExecPlan } from '../data/kpis';
 import { evaluateStep, todayISO } from '../engine/progress';
 import { MONTHS, QUARTER_LABEL } from '../labels';
@@ -31,7 +32,9 @@ export interface ReportSnapshot {
     partialProgress: number | null;
     planned: number | null;
     missingDepartments: string[];
-    departments: { id: string; name: string; progress: number | null; planned: number | null; dataState: DataState; activities: number; completed: number; late: number; stalled: number }[];
+    departments: { id: string; name: string; progress: number | null; planned: number | null; dataState: DataState; activities: number; completed: number; late: number; stalled: number; counts?: WorkCounts }[];
+    /** عدادات منفصلة: المشاريع والأنشطة مقابل المهام (غير موجودة في التقارير القديمة) */
+    counts?: WorkCounts;
     quarters?: { quarter: number; progress: number | null; partial: number | null; computable: boolean; hasPlans: boolean }[];
     months?: { month: number; scheduled: number; done: number; late: number }[];
   };
@@ -85,8 +88,17 @@ export async function buildReportSnapshot(
       completed: d.activitiesCompleted,
       late: d.activitiesLate,
       stalled: d.activitiesStalled,
+      counts: deptCounts(d, yp.plans.find((p) => p.id === d.planId)),
     })),
   };
+  {
+    const c = emptyCounts();
+    for (const d of operational.departments) {
+      for (const k of Object.keys(c.works) as (keyof WorkCounts['works'])[]) c.works[k] += d.counts!.works[k];
+      for (const k of Object.keys(c.tasks) as (keyof WorkCounts['tasks'])[]) c.tasks[k] += d.counts!.tasks[k];
+    }
+    operational.counts = c;
+  }
 
   if (type === 'annual') {
     operational.quarters = [1, 2, 3, 4].map((q) => {
@@ -114,7 +126,7 @@ export async function buildReportSnapshot(
       if (s.status === 'completed' && (!s.actual_end || (s.actual_end >= periodStart && s.actual_end <= periodEnd))) {
         achievements.push({ department: dn(p.departmentId), activity: a.title, step: s.title, date: s.actual_end });
       }
-      const e = evaluateStep({ id: s.id, weight: s.weight, progress: s.progress, status: s.status, weeks: s.weeks }, yp.boundaries[p.quarter], asOf);
+      const e = evaluateStep(stepFact(s), yp.boundaries[p.quarter], asOf);
       if (e.isLate) lateItems.push({ department: dn(p.departmentId), activity: a.title, step: s.title, dueDate: e.dueDate, daysLate: e.daysLate, responsible: s.assigneeName ?? s.responsible_text });
     }
   }
@@ -133,7 +145,7 @@ export async function buildReportSnapshot(
         month: m,
         scheduled: steps.length,
         done: steps.filter((s) => s.status === 'completed').length,
-        late: steps.filter((s) => evaluateStep({ id: s.id, weight: s.weight, progress: s.progress, status: s.status, weeks: s.weeks }, b, at).isLate).length,
+        late: steps.filter((s) => evaluateStep(stepFact(s), b, at).isLate).length,
       };
     });
   }

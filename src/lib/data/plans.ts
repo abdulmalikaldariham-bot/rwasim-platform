@@ -26,7 +26,17 @@ export interface StepRow {
   intensities: Record<number, number>;
   substeps: { id: string; title: string; weight: number; sort_order: number; is_done: boolean }[];
   evidenceCount: number;
+  /** اسم المسؤول الرئيسي أو ملخص المكلفين */
   assigneeName: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  dates_source: 'weeks' | 'manual' | 'none';
+  output_achieved: string | null;
+  output_policy: 'none' | 'description' | 'evidence';
+  assignment_mode: 'shared' | 'individual';
+  completion_threshold: number;
+  assign_all: boolean;
+  assignees: { user_id: string; name: string; is_lead: boolean; status: StepStatus; done_at: string | null; note: string | null }[];
 }
 
 export interface ActivityRow {
@@ -57,16 +67,44 @@ export interface PlanRow {
   updated_at: string;
 }
 
+export function assigneeSummary(list: { name: string; is_lead: boolean }[], all = false): string | null {
+  if (!list.length) return null;
+  if (all) return `جميع موظفي الإدارة (${list.length})`;
+  if (list.length === 1) return list[0].name;
+  const lead = list.find((a) => a.is_lead) ?? list[0];
+  return `${lead.name} و${list.length - 1} ${list.length - 1 === 1 ? 'آخر' : list.length - 1 <= 10 ? 'آخرين' : 'آخرين'}`;
+}
+
+/** تحويل صف المهمة إلى مدخلات المحرك */
+export function stepFact(s: StepRow) {
+  return {
+    id: s.id,
+    weight: s.weight,
+    progress: s.progress,
+    status: s.status,
+    weeks: s.weeks,
+    lastUpdateAt: s.last_update_at,
+    actualEnd: s.actual_end,
+    startDate: s.start_date,
+    endDate: s.end_date,
+    datesSource: s.dates_source,
+  };
+}
+
 export async function getBoundaries(sb: SupabaseClient, year: number, quarter: number): Promise<WeekBoundary[]> {
   const { data } = await sb.from('quarter_weeks').select('*').eq('year', year).eq('quarter', quarter).order('week_index');
   return (data ?? []).map((w) => ({ weekIndex: w.week_index, month: w.month, weekOfMonth: w.week_of_month, start: w.start_date, end: w.end_date }));
 }
 
 const STEP_SELECT =
-  'id,activity_id,plan_id,seq,title,responsible_text,assignee_id,output,weight,suggested_weight,is_core,status,progress,actual_start,actual_end,import_followup,import_note,last_update_at,step_weeks(week_index,intensity),substeps(id,title,weight,sort_order,is_done),evidence(count),assignee:profiles!steps_assignee_id_fkey(full_name)';
+  'id,activity_id,plan_id,seq,title,responsible_text,assignee_id,output,weight,suggested_weight,is_core,status,progress,actual_start,actual_end,import_followup,import_note,last_update_at,start_date,end_date,dates_source,output_achieved,output_policy,assignment_mode,completion_threshold,assign_all,step_weeks(week_index,intensity),substeps(id,title,weight,sort_order,is_done),evidence(count),step_assignees(user_id,is_lead,status,done_at,note,person:profiles!step_assignees_user_id_fkey(full_name))';
 
  
+ 
 function mapStep(s: any): StepRow {
+  const assignees = ((s.step_assignees ?? []) as { user_id: string; is_lead: boolean; status: StepStatus; done_at: string | null; note: string | null; person?: { full_name: string } }[])
+    .map((a) => ({ user_id: a.user_id, name: a.person?.full_name ?? '—', is_lead: a.is_lead, status: a.status, done_at: a.done_at, note: a.note }))
+    .sort((a, b) => Number(b.is_lead) - Number(a.is_lead) || a.name.localeCompare(b.name, 'ar'));
   const weeks = ((s.step_weeks ?? []) as { week_index: number; intensity: number | null }[]).sort((a, b) => a.week_index - b.week_index);
   return {
     ...s,
@@ -76,7 +114,9 @@ function mapStep(s: any): StepRow {
     intensities: Object.fromEntries(weeks.filter((w) => w.intensity).map((w) => [w.week_index, w.intensity!])),
     substeps: ((s.substeps ?? []) as StepRow['substeps']).map((x) => ({ ...x, weight: Number(x.weight) })).sort((a, b) => a.sort_order - b.sort_order),
     evidenceCount: s.evidence?.[0]?.count ?? 0,
-    assigneeName: s.assignee?.full_name ?? null,
+    completion_threshold: Number(s.completion_threshold ?? 100),
+    assignees,
+    assigneeName: assigneeSummary(assignees, !!s.assign_all),
   };
 }
 
@@ -107,7 +147,7 @@ export async function loadActivities(
         {
           id: a.id,
           weight: Number(a.weight),
-          steps: st.map((s) => ({ id: s.id, weight: s.weight, progress: s.progress, status: s.status, weeks: s.weeks, lastUpdateAt: s.last_update_at, actualEnd: s.actual_end })),
+          steps: st.map(stepFact),
         },
         b,
         end && asOf > end ? end : asOf,
@@ -124,12 +164,23 @@ export async function loadPlan(sb: SupabaseClient, planId: string) {
   return { plan: plan as PlanRow, boundaries, activities };
 }
 
-export async function loadStepsOnly(sb: SupabaseClient, filter: { assignee?: string; planIds?: string[] }) {
-  let q = sb.from('steps').select(STEP_SELECT + ',activities(title,plan_id),op_plans(year,quarter,department_id,status)').eq('is_archived', false);
-  if (filter.assignee) q = q.eq('assignee_id', filter.assignee);
+export async function loadStepsOnly(sb: SupabaseClient, filter: { assignee?: string; planIds?: string[]; ids?: string[] }) {
+  let ids = filter.ids;
+  if (filter.assignee) {
+    const { data: mine } = await sb.from('step_assignees').select('step_id').eq('user_id', filter.assignee);
+    ids = (mine ?? []).map((m) => m.step_id);
+    if (!ids.length) return [];
+  }
+  let q = sb.from('steps').select(STEP_SELECT + ',activities(title,plan_id,kind),op_plans(year,quarter,department_id,status)').eq('is_archived', false);
+  if (ids) q = q.in('id', ids);
   if (filter.planIds) q = q.in('plan_id', filter.planIds);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
    
-  return (data ?? []).map((s: any) => ({ ...mapStep(s), activityTitle: s.activities?.title as string, plan: s.op_plans as { year: number; quarter: number; department_id: string; status: PlanStatus } }));
+  return (data ?? []).map((s: any) => ({
+    ...mapStep(s),
+    activityTitle: s.activities?.title as string,
+    activityKind: s.activities?.kind as ActivityKind,
+    plan: s.op_plans as { year: number; quarter: number; department_id: string; status: PlanStatus },
+  }));
 }

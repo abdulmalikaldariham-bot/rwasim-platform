@@ -254,7 +254,7 @@ function ActList({
           <Link href={`/activities/${a.id}`} className="min-w-0 hover:text-teal">
             <span className="block truncate font-medium">{a.title}</span>
             <span className="block text-xs text-muted">
-              {deptName(depts as never, planDept[a.plan_id], true)} — منجز {fmtPct(a.eval.progress)} من مخطط {fmtPct(a.eval.planned)} — {a.eval.lateSteps} خطوات متأخرة
+              {deptName(depts as never, planDept[a.plan_id], true)} — منجز {fmtPct(a.eval.progress)} من مخطط {fmtPct(a.eval.planned)} — {a.eval.lateSteps} مهام متأخرة
               {impact ? ` — أثره على الجمعية ${fmtPct(Math.round(impact(a) * 100) / 100)}` : ''}
             </span>
           </Link>

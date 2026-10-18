@@ -1,5 +1,5 @@
 // المصطلحات الموحدة للواجهة
-import type { ActivityState, DataState, PlanStatus, StepStatus } from './engine/types';
+import type { ActivityState, DataState, PlanStatus, StepStatus, TimeState } from './engine/types';
 import type { KpiStatus } from './engine/kpi';
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -61,3 +61,25 @@ export const REPORT_TYPE: Record<string, string> = { monthly: 'شهري', quarte
 export function weekLabel(month: number, weekOfMonth: number) {
   return `${MONTHS[month]} · الأسبوع ${weekOfMonth}`;
 }
+
+export const TIME_STATE: Record<TimeState, string> = {
+  upcoming: 'لم يحن موعدها',
+  in_window: 'ضمن فترة التنفيذ',
+  overdue: 'تجاوزت موعدها',
+  done: 'مكتملة',
+  unscheduled: 'بلا تاريخ',
+};
+
+export const DATES_SOURCE: Record<string, string> = {
+  weeks: 'تقديرية من الجدولة الأسبوعية',
+  manual: 'محددة يدويًا',
+  none: 'غير محددة — تحتاج مراجعة',
+};
+
+export const OUTPUT_POLICY: Record<string, string> = {
+  description: 'يلزم وصف المخرج المتحقق',
+  evidence: 'يلزم وصف وشاهد',
+  none: 'لا يلزم توثيق',
+};
+
+export const ACTIVITY_KIND_GROUP = (kind: string) => (kind === 'project' ? 'مشروع' : 'نشاط');

@@ -8,7 +8,7 @@ export const metadata = { title: 'سجل التغييرات' };
 const TABLES: Record<string, string> = {
   op_plans: 'الخطط التشغيلية',
   activities: 'الأنشطة',
-  steps: 'الخطوات',
+  steps: 'المهام',
   step_weeks: 'الجدولة',
   substeps: 'المراحل الفرعية',
   kpis: 'المؤشرات',

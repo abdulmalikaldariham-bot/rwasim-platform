@@ -224,6 +224,17 @@ export async function deleteStepAction(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+/** تعديل المخرج المطلوب لمهمة (مسموح حتى بعد الاعتماد لمن يدير الخطة؛ يُسجل في سجل التغييرات) */
+export async function setRequiredOutputAction(stepId: string, output: string): Promise<ActionResult> {
+  const sb = await createClient();
+  const v = output.trim();
+  const { data, error } = await sb.from('steps').update({ output: v || null }).eq('id', stepId).select('id');
+  if (error) return fail(error);
+  if (!data?.length) return fail('تعديل المخرج من صلاحية مدير الإدارة أو المدير التنفيذي');
+  revalidatePath('/', 'layout');
+  return { ok: true, message: 'حُفظ المخرج المطلوب' };
+}
+
 /** حفظ أوزان مسودة (أنشطة + خطوات + الخطوة الجوهرية + المراحل الفرعية) */
 export async function saveWeightsAction(input: {
   planId: string;
@@ -233,6 +244,18 @@ export async function saveWeightsAction(input: {
 }): Promise<ActionResult> {
   if ([...input.activities, ...input.steps].some((x) => !(x.weight >= 0) || x.weight > 100)) return fail('الأوزان يجب أن تكون بين 0 و100');
   const sb = await createClient();
+  // منع حفظ توزيع ناقص: مجموع الأنشطة 100، ومجموع مهام كل نشاط 100، ومراحل كل مهمة 100
+  const near = (n: number) => Math.abs(n - 100) <= 0.01;
+  const total = input.activities.reduce((t, a) => t + a.weight, 0);
+  if (input.activities.length && !near(total)) return fail(`مجموع أوزان الأنشطة ${Math.round(total * 100) / 100}٪ — يجب أن يكون 100٪`);
+  const { data: owners } = await sb.from('steps').select('id,activity_id').eq('plan_id', input.planId).eq('is_archived', false);
+  const byAct = new Map<string, number>();
+  for (const st of input.steps) {
+    const a = owners?.find((o) => o.id === st.id)?.activity_id;
+    if (a) byAct.set(a, (byAct.get(a) ?? 0) + st.weight);
+  }
+  for (const [, t] of byAct) if (!near(t)) return fail('مجموع أوزان مهام أحد الأنشطة لا يساوي 100٪');
+  for (const ss of input.substeps ?? []) if (ss.items.length && !near(ss.items.reduce((t, x) => t + x.weight, 0))) return fail('مجموع المراحل الفرعية لإحدى المهام لا يساوي 100٪');
   for (const a of input.activities) {
     const { error } = await sb.from('activities').update({ weight: a.weight }).eq('id', a.id).eq('plan_id', input.planId);
     if (error) return fail(error);

@@ -10,6 +10,8 @@ import { EmptyState, Notice, PageHeader, Panel, PanelHead, Pill, ProgressBar, st
 import { PeriodPicker } from '@/components/period-picker';
 import { DATA_STATE, PLAN_STATUS, QUARTER_LABEL } from '@/lib/labels';
 import { fmtDateTime, fmtPct } from '@/lib/format';
+import { deptCounts } from '@/lib/engine/counts';
+import { WorkCountsBlocks } from '@/components/dashboard/counts';
 
 export default async function DepartmentDrill({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ year?: string; q?: string }> }) {
   const { id } = await params;
@@ -48,10 +50,6 @@ export default async function DepartmentDrill({ params, searchParams }: { params
                 <p className="mt-1.5 text-xs text-muted">المخطط حتى اليوم {fmtPct(d.planned)}</p>
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Pill tone="done">{d.activitiesCompleted} مكتملة</Pill>
-                <Pill tone="teal">{d.activitiesInProgress} جارية</Pill>
-                {d.activitiesLate > 0 && <Pill tone="late">{d.activitiesLate} متأخرة</Pill>}
-                {d.activitiesStalled > 0 && <Pill tone="stalled">{d.activitiesStalled} متعثرة</Pill>}
                 <Pill tone={stateTone(d.dataState)}>{DATA_STATE[d.dataState]}</Pill>
               </div>
               <p className="mt-3 text-xs text-muted">آخر تحديث: {fmtDateTime(d.lastUpdateAt)}</p>
@@ -63,9 +61,14 @@ export default async function DepartmentDrill({ params, searchParams }: { params
               </div>
             </Panel>
           </div>
+          <WorkCountsBlocks
+            counts={deptCounts(d, planFact)}
+            hrefWorks={(st) => `/activities?year=${period.year}&q=${period.quarter}&dept=${id}&state=${st}`}
+            hrefTasks={(st) => `/activities?year=${period.year}&q=${period.quarter}&dept=${id}&tasks=${st}`}
+          />
           {visibleActs.length ? (
             <section>
-              <h2 className="mb-3 text-lg font-bold text-ink">الأنشطة</h2>
+              <h2 className="mb-3 text-lg font-bold text-ink">المشاريع والأنشطة</h2>
               <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
                 {visibleActs.map((a) => (
                   <ActivityCard key={a.id} a={a} dept={dept.short_name ?? dept.name} href={`/activities/${a.id}`} />

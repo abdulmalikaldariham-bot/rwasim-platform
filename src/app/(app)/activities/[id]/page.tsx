@@ -2,12 +2,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireSession } from '@/lib/auth';
 import { deptName, getDepartments } from '@/lib/data/common';
-import { getBoundaries, loadActivities } from '@/lib/data/plans';
+import { getBoundaries, loadActivities, stepFact } from '@/lib/data/plans';
 import { evaluateStep } from '@/lib/engine/progress';
 import { KIND_LABELS } from '@/lib/engine/weights';
 import { PageHeader, Panel, PanelHead, Pill, ProgressBar, stateTone, Notice } from '@/components/ui';
-import { TaskUpdater } from '@/components/tasks/task-updater';
-import { AssignSelect, EvidenceLink } from '@/components/tasks/small-controls';
+import { EvidenceLink } from '@/components/tasks/small-controls';
 import { ACTIVITY_STATE, MONTHS, PLAN_STATUS, QUARTER_LABEL, STEP_STATUS } from '@/lib/labels';
 import { fmtDate, fmtDateTime, fmtPct } from '@/lib/format';
 
@@ -27,13 +26,13 @@ export default async function ActivityDetail({ params, searchParams }: { params:
   const isManager = profile.role === 'executive_director' || (profile.role === 'dept_manager' && profile.department_id === plan.department_id);
   const today = new Date().toISOString().slice(0, 10);
 
-  const [{ data: updates }, { data: evidence }, { data: people }, kpi] = await Promise.all([
+  const [{ data: updates }, { data: evidence }, , kpi] = await Promise.all([
     sb.from('step_updates').select('id,step_id,created_at,note,from_status,to_status,to_progress,profiles(full_name)').in('step_id', a.steps.map((s) => s.id)).order('created_at', { ascending: false }).limit(30),
     sb.from('evidence').select('id,step_id,file_name,storage_path,created_at,note').in('step_id', a.steps.map((s) => s.id)).order('created_at', { ascending: false }),
     isManager ? sb.from('profiles').select('id,full_name').eq('department_id', plan.department_id).eq('is_active', true).order('full_name') : Promise.resolve({ data: [] }),
     act.kpi_id ? sb.from('kpis').select('id,name').eq('id', act.kpi_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
-  const canUpdateStep = (assignee: string | null) => plan.status === 'approved' && (isManager || assignee === profile.id);
+  const canUpdateStep = (assignees: string[]) => plan.status === 'approved' && (isManager || assignees.includes(profile.id));
   const months = [...new Set(b.map((w) => w.month))];
 
   return (
@@ -61,7 +60,7 @@ export default async function ActivityDetail({ params, searchParams }: { params:
           <div className="flex flex-wrap gap-2">
             <Pill tone={stateTone(a.eval.state)}>{ACTIVITY_STATE[a.eval.state]}</Pill>
             <Pill>
-              {a.eval.stepsCompleted}/{a.eval.stepsTotal} خطوات
+              {a.eval.stepsCompleted} من {a.eval.stepsTotal} مهام مكتملة
             </Pill>
             <Pill>حتى {fmtDate(a.eval.dueDate)}</Pill>
             {showWeights && <Pill tone="teal">وزنه في خطة الإدارة {fmtPct(a.weight)}</Pill>}
@@ -79,10 +78,10 @@ export default async function ActivityDetail({ params, searchParams }: { params:
 
       <div className="grid gap-6 xl:grid-cols-[1fr_22rem]">
         <Panel>
-          <PanelHead title="الخطوات التنفيذية" hint="الشريط الصغير يوضح أسابيع التنفيذ المخططة خلال الربع" />
+          <PanelHead title="المهام التنفيذية" hint="الشريط الصغير يوضح أسابيع التنفيذ المخططة خلال الربع" />
           <ol className="divide-y divide-line">
             {a.steps.map((s) => {
-              const e = evaluateStep({ id: s.id, weight: s.weight, progress: s.progress, status: s.status, weeks: s.weeks }, b, today);
+              const e = evaluateStep(stepFact(s), b, today);
               const tone = s.status === 'completed' ? 'done' : e.isLate ? 'late' : stateTone(s.status);
               const ev = (evidence ?? []).filter((x) => x.step_id === s.id);
               return (
@@ -90,11 +89,19 @@ export default async function ActivityDetail({ params, searchParams }: { params:
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-ink">
-                        {s.title}
+                        <Link href={`/tasks/${s.id}?from=/activities/${a.id}`} className="hover:text-teal hover:underline">
+                          {s.title}
+                        </Link>
                         {s.is_core && <span className="ms-2 rounded bg-orange-soft px-1.5 py-0.5 text-[11px] font-medium text-late">الخطوة الجوهرية</span>}
                       </p>
                       <p className="mt-0.5 text-sm text-muted">
-                        {s.assigneeName ? `${s.assigneeName} (مفوض)` : s.responsible_text ?? 'بلا مسؤول'} — المخرج: {s.output ?? 'غير محدد'}
+                        {s.assigneeName ?? s.responsible_text ?? 'غير مسندة'} — {fmtDate(s.start_date)} إلى {fmtDate(s.end_date)}
+                        {s.dates_source === 'weeks' ? ' (تقديري)' : ''}
+                      </p>
+                      <p className="mt-1 text-sm">
+                        <span className="text-muted">المخرج المطلوب: </span>
+                        {s.output ?? 'غير محدد'}
+                        {s.output_achieved && <span className="block text-done">المتحقق: {s.output_achieved}</span>}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -118,8 +125,11 @@ export default async function ActivityDetail({ params, searchParams }: { params:
                       <span className="ms-2 text-xs text-muted">{MONTHS[months[0]]} – {MONTHS[months[months.length - 1]]}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {isManager && plan.status !== 'archived' && <AssignSelect stepId={s.id} value={s.assignee_id} people={(people ?? []).map((p) => ({ id: p.id, name: p.full_name }))} />}
-                      {canUpdateStep(s.assignee_id) && <TaskUpdater step={s} departmentId={plan.department_id} compact />}
+                      {(isManager || canUpdateStep(s.assignees.map((x) => x.user_id))) && (
+                        <Link href={`/tasks/${s.id}?from=/activities/${a.id}`} className="inline-flex h-8 items-center rounded-xl px-3 text-xs font-semibold text-teal hover:bg-teal-soft">
+                          {isManager ? 'فتح المهمة والإسناد' : 'تسجيل الإنجاز'}
+                        </Link>
+                      )}
                     </div>
                   </div>
                   {s.substeps.length > 0 && (

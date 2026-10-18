@@ -24,7 +24,7 @@ export function ActivityFilters({ depts, showWeights }: { depts: { id: string; n
         }}
         className="flex-1 sm:max-w-xs"
       >
-        <input value={s} onChange={(e) => setS(e.target.value)} placeholder="ابحث في الأنشطة والخطوات والمسؤولين" className={`${sel} w-full px-3`} aria-label="بحث" />
+        <input value={s} onChange={(e) => setS(e.target.value)} placeholder="ابحث في المشاريع والأنشطة والمهام والمسؤولين" className={`${sel} w-full px-3`} aria-label="بحث" />
       </form>
       {depts.length > 0 && (
         <select className={sel} value={sp.get('dept') ?? ''} onChange={(e) => set('dept', e.target.value || null)} aria-label="الإدارة">
@@ -36,6 +36,18 @@ export function ActivityFilters({ depts, showWeights }: { depts: { id: string; n
           ))}
         </select>
       )}
+      <select className={sel} value={sp.get('kind') ?? ''} onChange={(e) => set('kind', e.target.value || null)} aria-label="النوع">
+        <option value="">المشاريع والأنشطة</option>
+        <option value="project">المشاريع فقط</option>
+        <option value="activity">الأنشطة فقط</option>
+      </select>
+      <select className={sel} value={sp.get('tasks') ?? ''} onChange={(e) => set('tasks', e.target.value || null)} aria-label="حالة المهام">
+        <option value="">كل المهام</option>
+        <option value="late">فيها مهام متأخرة</option>
+        <option value="in_progress">فيها مهام جارية</option>
+        <option value="completed">فيها مهام مكتملة</option>
+        <option value="not_started">فيها مهام لم تبدأ</option>
+      </select>
       <select className={sel} value={sp.get('state') ?? ''} onChange={(e) => set('state', e.target.value || null)} aria-label="الحالة">
         <option value="">كل الحالات</option>
         {(['stalled', 'late', 'in_progress', 'not_started', 'completed'] as const).map((k) => (

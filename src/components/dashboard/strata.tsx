@@ -3,12 +3,13 @@ import type { DeptEval, OrgEval } from '@/lib/engine/types';
 import { DATA_STATE } from '@/lib/labels';
 import { fmtPct } from '@/lib/format';
 import { Pill, stateTone } from '../ui';
+import type { WorkCounts } from '@/lib/engine/counts';
 
 /**
  * «الطبقات»: كل إدارة طبقة أفقية تمتلئ بقدر إنجازها، والعلامة الرأسية تمثل المخطط حتى اليوم.
  * الوزن (20٪) يدخل في الحساب فقط ولا يُعرض.
  */
-export function Strata({ org, names, hrefFor }: { org: OrgEval; names: Record<string, string>; hrefFor: (d: DeptEval) => string }) {
+export function Strata({ org, names, hrefFor, counts }: { org: OrgEval; names: Record<string, string>; hrefFor: (d: DeptEval) => string; counts?: Record<string, WorkCounts> }) {
   return (
     <ol className="space-y-2.5">
       {org.departments.map((d, i) => {
@@ -35,7 +36,11 @@ export function Strata({ org, names, hrefFor }: { org: OrgEval; names: Record<st
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-ink">{names[d.departmentId]}</p>
                   <p className="text-xs text-muted">
-                    {has ? `${d.activitiesCompleted} من ${d.activitiesTotal} أنشطة مكتملة` : DATA_STATE[d.dataState]}
+                    {!has
+                      ? DATA_STATE[d.dataState]
+                      : counts?.[d.departmentId]
+                        ? `${counts[d.departmentId].works.completed} من ${counts[d.departmentId].works.total} مشروع ونشاط · ${counts[d.departmentId].tasks.completed} من ${counts[d.departmentId].tasks.total} مهمة مكتملة${counts[d.departmentId].tasks.late ? ` · ${counts[d.departmentId].tasks.late} متأخرة` : ''}`
+                        : `${d.activitiesCompleted} من ${d.activitiesTotal} أنشطة مكتملة`}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">

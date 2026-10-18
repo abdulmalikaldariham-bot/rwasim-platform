@@ -49,9 +49,9 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-5 py-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 card px-5 py-3">
         <p className="text-sm text-muted">
-          {activities.length} أنشطة، {activities.reduce((s, a) => s + a.steps.length, 0)} خطوة —{' '}
+          {activities.length} أنشطة، {activities.reduce((s, a) => s + a.steps.length, 0)} مهمة —{' '}
           {issueList.length === 0 ? <span className="text-done">الأوزان مكتملة</span> : <span className="text-late">{issueList.length} ملاحظات على الأوزان</span>}
         </p>
         <PlanActions

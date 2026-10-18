@@ -20,7 +20,14 @@ export interface StepFact {
   weeks: number[];
   lastUpdateAt?: string | null;
   actualEnd?: string | null;
+  /** تواريخ المهمة؛ عند dates_source = manual تُعتمد بدل الأسابيع */
+  startDate?: string | null;
+  endDate?: string | null;
+  datesSource?: 'weeks' | 'manual' | 'none' | null;
 }
+
+/** الحالة الزمنية للمهمة — مستقلة عن حالة التنفيذ */
+export type TimeState = 'upcoming' | 'in_window' | 'overdue' | 'done' | 'unscheduled';
 
 export interface ActivityFact {
   id: string;
@@ -62,6 +69,7 @@ export interface StepEval {
   isLate: boolean;
   daysLate: number;
   isCurrentWeek: boolean;
+  timeState: TimeState;
 }
 
 export interface ActivityEval {

@@ -90,7 +90,7 @@ export function TaskUpdater({ step, departmentId, compact }: { step: UpdatableSt
                 </button>
               ))}
             </div>
-            {!hasSubs && status === 'in_progress' && <p className="mt-2 text-xs text-muted">الخطوة الجارية لا تُحتسب في الإنجاز حتى تكتمل.</p>}
+            {!hasSubs && status === 'in_progress' && <p className="mt-2 text-xs text-muted">المهمة الجارية لا تُحتسب في الإنجاز حتى تكتمل.</p>}
           </fieldset>
           {hasSubs && (
             <fieldset>
@@ -119,7 +119,7 @@ export function TaskUpdater({ step, departmentId, compact }: { step: UpdatableSt
             </fieldset>
           )}
           <p className="rounded-lg bg-sunken px-3 py-2 text-sm">
-            إنجاز الخطوة بعد الحفظ: <span className="num font-bold">{fmtPct(preview)}</span>
+            إنجاز المهمة بعد الحفظ: <span className="num font-bold">{fmtPct(preview)}</span>
           </p>
           <div>
             <Label htmlFor={`note-${step.id}`} hint="اختيارية">ملاحظة</Label>

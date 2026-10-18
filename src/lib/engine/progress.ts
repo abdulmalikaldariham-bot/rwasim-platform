@@ -21,6 +21,7 @@ import type {
   StepEval,
   StepFact,
   StepStatus,
+  TimeState,
   WeekBoundary,
 } from './types';
 
@@ -62,6 +63,18 @@ export function computeStepProgress(status: StepStatus, substeps: SubstepInput[]
     return p >= 99.995 ? 100 : p;
   }
   return status === 'completed' ? 100 : 0;
+}
+
+/**
+ * المهمة الفردية الموزعة: كل مكلف يسجل إنجازه، وتكتمل المهمة الأصلية عند بلوغ
+ * نسبة المنجزين حدّ الاكتمال (100٪ = الجميع). سجل واحد ووزن واحد مهما تعدد المكلفون.
+ * (مطابقة للدالة recompute_individual_step في قاعدة البيانات)
+ */
+export function computeIndividualProgress(done: number, total: number, thresholdPct = 100): { progress: number; completed: boolean } {
+  if (total <= 0) return { progress: 0, completed: false };
+  const pct = (done * 100) / total;
+  const completed = pct >= thresholdPct;
+  return { progress: completed ? 100 : clamp(round2((pct / thresholdPct) * 100)), completed };
 }
 
 // ---------------------------------------------------------------------
@@ -126,20 +139,54 @@ export function currentWeekIndex(boundaries: WeekBoundary[], asOf: string): numb
 // تقييم الخطوة والنشاط
 // ---------------------------------------------------------------------
 
+/** الأسابيع الفعلية للمهمة: تتبع التواريخ اليدوية إن وُجدت، وإلا الجدولة المستوردة */
+export function effectiveWeeks(step: Pick<StepFact, 'weeks' | 'startDate' | 'endDate' | 'datesSource'>, boundaries: WeekBoundary[]): number[] {
+  if (step.datesSource === 'manual' && step.startDate && step.endDate) {
+    const s = toDate(step.startDate);
+    const e = toDate(step.endDate);
+    return boundaries.filter((b) => toDate(b.start) <= e && toDate(b.end) >= s).map((b) => b.weekIndex);
+  }
+  return step.weeks;
+}
+
+function manual(step: Pick<StepFact, 'startDate' | 'endDate' | 'datesSource'>) {
+  return step.datesSource === 'manual' && !!step.startDate && !!step.endDate;
+}
+
+function plannedForStep(step: StepFact, boundaries: WeekBoundary[], asOf: string): number {
+  if (manual(step)) {
+    const s = toDate(step.startDate!);
+    const e = toDate(step.endDate!) + DAY;
+    const t = toDate(asOf) + DAY;
+    return clamp((t - s) / (e - s), 0, 1);
+  }
+  return plannedStepFraction(step.weeks, boundaries, asOf);
+}
+
+export function timeStateOf(status: StepStatus, start: string | null, end: string | null, asOf: string): TimeState {
+  if (status === 'completed') return 'done';
+  if (!start || !end) return 'unscheduled';
+  const t = toDate(asOf);
+  if (t < toDate(start)) return 'upcoming';
+  if (t > toDate(end)) return 'overdue';
+  return 'in_window';
+}
+
 export function evaluateStep(step: StepFact, boundaries: WeekBoundary[], asOf: string): StepEval {
-  const { start, end } = stepWindow(step.weeks, boundaries);
+  const { start, end } = manual(step) ? { start: step.startDate!, end: step.endDate! } : stepWindow(step.weeks, boundaries);
   const progress = clamp(Number(step.progress) || 0);
   const isLate = !!end && progress < 100 && toDate(asOf) > toDate(end);
   const daysLate = isLate && end ? Math.floor((toDate(asOf) - toDate(end)) / DAY) : 0;
   return {
     id: step.id,
     progress,
-    planned: round2(plannedStepFraction(step.weeks, boundaries, asOf) * 100),
+    planned: round2(plannedForStep(step, boundaries, asOf) * 100),
     dueDate: end,
     startDate: start,
     isLate,
     daysLate,
-    isCurrentWeek: isWeekCurrent(step.weeks, boundaries, asOf),
+    isCurrentWeek: isWeekCurrent(effectiveWeeks(step, boundaries), boundaries, asOf),
+    timeState: timeStateOf(step.status, start, end, asOf),
   };
 }
 
@@ -341,7 +388,7 @@ export function quarterCurve(plan: PlanFact, boundaries: WeekBoundary[], asOf: s
       let ap = 0;
       let aa = 0;
       for (const s of a.steps) {
-        ap += s.weight * plannedStepFraction(s.weeks, boundaries, end) * 100;
+        ap += s.weight * plannedForStep(s, boundaries, end) * 100;
         const doneBy = s.status === 'completed' && s.actualEnd && toDate(s.actualEnd) <= toDate(end);
         if (doneBy) aa += s.weight * 100;
         else if (s.status !== 'completed' && s.progress > 0 && toDate(b.start) <= t && t <= toDate(end)) aa += s.weight * s.progress;

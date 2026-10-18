@@ -12,7 +12,7 @@ export function ActivityCard({ a, dept, href, showWeight }: { a: ActivityRow; de
   const last = a.steps.map((s) => s.last_update_at).filter(Boolean).sort().at(-1) ?? null;
   const remaining = a.eval.stepsTotal - a.eval.stepsCompleted;
   return (
-    <Link href={href} className="group flex flex-col rounded-xl border border-line bg-surface p-4 transition hover:border-teal focus-visible:border-teal">
+    <Link href={href} className="group flex flex-col card p-4 transition hover:border-teal focus-visible:border-teal">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="font-semibold leading-snug text-ink group-hover:text-teal">{a.title}</h3>
@@ -28,7 +28,7 @@ export function ActivityCard({ a, dept, href, showWeight }: { a: ActivityRow; de
         <span className="num w-14 shrink-0 text-left text-lg font-bold text-ink">{fmtPct(a.eval.progress)}</span>
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-y-1 text-sm">
-        <dt className="text-muted">الخطوات</dt>
+        <dt className="text-muted">المهام</dt>
         <dd className="text-left">
           <span className="num font-semibold text-done">{a.eval.stepsCompleted}</span> مكتملة، <span className="num">{remaining}</span> متبقية
           {a.eval.lateSteps > 0 && <span className="text-late"> ({a.eval.lateSteps} متأخرة)</span>}

@@ -60,13 +60,21 @@ await step('اعتماد خطة مرفوعة من المدير التنفيذي'
 
 // 2) الموظف المفوض يرى مهامه فقط ويكملها بنقرة
 const emp = await session('rashid@demo.rawasim.local', 390);
-await step('الموظف: شاشة مهامي على الجوال وإكمال مهمة بنقرة', async () => {
+await step('الموظف: شاشة مهامي على الجوال وإكمال مهمة مع المخرج المتحقق', async () => {
   await emp.page.goto(BASE + '/my-tasks', { waitUntil: 'networkidle0' });
   await shot(emp.page, 'employee_mytasks_mobile');
   const before = await emp.page.$$eval('article', (a) => a.length);
   if (!before) throw new Error('لا توجد مهام ظاهرة');
-  await clickText(emp.page, 'تم الإنجاز');
+  // تسجيل الإنجاز من صفحة المهمة: المخرج المتحقق مطلوب قبل الإكمال
+  await clickText(emp.page, 'تسجيل الإنجاز', 'a');
+  await emp.page.waitForFunction(() => location.pathname.startsWith('/tasks/'), { timeout: 15000 });
+  await emp.page.waitForSelector('[aria-label="الحالة"]');
+  await clickText(emp.page, 'مكتملة', '[aria-label="الحالة"] button');
+  await emp.page.waitForSelector('#out-c');
+  await emp.page.type('#out-c', 'نُشرت المسودة الأولى واعتمدها المدير');
+  await clickText(emp.page, 'حفظ التحديث');
   await sleep(2500);
+  await shot(emp.page, 'employee_task_page_mobile');
   await emp.page.goto(BASE + '/my-tasks?view=done', { waitUntil: 'networkidle0' });
   const done = await emp.page.$$eval('article', (a) => a.length);
   if (done < 1) throw new Error('لم تظهر المهمة في المنجزة');
@@ -99,7 +107,7 @@ await step('مدير إدارة تمكين: إنشاء خطة يدوية، خط�
     ['تنفيذ البرنامج', 'فريق تمكين', 'تقرير التنفيذ', ['س2', 'س3']],
     ['تقييم البرنامج', 'منسق تمكين', 'تقرير التقييم', ['س4']],
   ]) {
-    await clickText(p, 'خطوة');
+    await clickText(p, 'مهمة');
     await p.waitForSelector('#st');
     await p.type('#st', t);
     await p.type('#sr', r);
@@ -110,17 +118,17 @@ await step('مدير إدارة تمكين: إنشاء خطة يدوية، خط�
     await sleep(500);
   }
   await p.goto(planUrl + '/weights', { waitUntil: 'networkidle0' });
-  await p.$eval('input[aria-label^="الوزن المعتمد لـ"]', (el) => el.focus());
+  // إدارة الأوزان: شاشة واحدة — وزن النشاط مباشرة ثم التوزيع المقترح لمهامه (الجوهرية 40٪)
+  await p.$eval('input[aria-label="وزن برنامج تمكين القادة الصغار"]', (el) => el.focus());
   await p.keyboard.down('Control');
   await p.keyboard.press('A');
   await p.keyboard.up('Control');
   await p.keyboard.type('100');
-  await clickText(p, 'التالي');
-  await clickText(p, 'تطبيق القاعدة المقترحة');
+  await p.evaluate(() => [...document.querySelectorAll('button')].filter((b) => b.textContent.includes('توزيع مقترح')).at(-1)?.click());
   await sleep(300);
-  await shot(p, 'weights_steps');
-  await clickText(p, 'التالي');
-  await shot(p, 'weights_review');
+  await shot(p, 'weights_one_screen');
+  const blocked = await p.evaluate(() => document.body.innerText.includes('لا يمكن الحفظ قبل إكمال التوزيع'));
+  if (blocked) throw new Error('التوزيع ما زال ناقصًا');
   await clickText(p, 'حفظ ورفع للاعتماد');
   await p.waitForFunction(() => !location.pathname.endsWith('/weights'), { timeout: 20000 });
   await waitText(p, 'بانتظار الاعتماد');
@@ -148,7 +156,7 @@ await step('التعمق من اللوحة إلى الإدارة ثم النشا
   await ed.page.waitForSelector('a[href^="/activities/"]');
   await ed.page.click('a[href^="/activities/"]');
   await ed.page.waitForFunction(() => location.pathname.startsWith('/activities/'));
-  await waitText(ed.page, 'الخطوات التنفيذية');
+  await waitText(ed.page, 'المهام التنفيذية');
 });
 
 // 6) مجلس الإدارة: قراءة فقط
@@ -163,7 +171,7 @@ await step('مجلس الإدارة: يرى اللوحة دون مركز الم�
   await p.click('ol a[href*="/dashboard/department/"]');
   await p.waitForSelector('a[href^="/activities/"]');
   await p.click('a[href^="/activities/"]');
-  await waitText(p, 'الخطوات التنفيذية');
+  await waitText(p, 'المهام التنفيذية');
   const hasUpdate = await p.evaluate(() => [...document.querySelectorAll('button')].some((b) => b.textContent.includes('تم الإنجاز') || b.textContent.trim() === 'تحديث'));
   if (hasUpdate) throw new Error('أزرار التحديث ظاهرة للمجلس');
 });

@@ -1,5 +1,6 @@
 'use client';
 import { useActionState } from 'react';
+import Link from 'next/link';
 import { Button, Input, Label } from '@/components/ui';
 import { signIn } from './actions';
 
@@ -13,7 +14,12 @@ export function LoginForm({ next }: { next?: string }) {
         <Input id="email" name="email" type="email" autoComplete="email" required dir="ltr" />
       </div>
       <div>
-        <Label htmlFor="password">كلمة المرور</Label>
+        <div className="flex items-baseline justify-between">
+          <Label htmlFor="password">كلمة المرور</Label>
+          <Link href="/login/forgot" className="text-xs text-teal hover:underline">
+            نسيت كلمة المرور؟
+          </Link>
+        </div>
         <Input id="password" name="password" type="password" autoComplete="current-password" required dir="ltr" />
       </div>
       {state?.error && (

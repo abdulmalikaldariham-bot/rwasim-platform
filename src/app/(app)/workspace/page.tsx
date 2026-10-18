@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import { requireSession } from '@/lib/auth';
 import { getDepartments, resolvePeriod, getSetting } from '@/lib/data/common';
-import { getBoundaries, loadActivities, type PlanRow } from '@/lib/data/plans';
+import { getBoundaries, loadActivities, stepFact, type PlanRow } from '@/lib/data/plans';
 import { toTask } from '@/lib/data/tasks';
-import { evaluateDepartment, currentWeekIndex } from '@/lib/engine/progress';
+import { evaluateDepartment, currentWeekIndex, effectiveWeeks } from '@/lib/engine/progress';
 import { PageHeader, Panel, PanelHead, EmptyState, ButtonLink, ProgressBar, Pill, Notice, stateTone } from '@/components/ui';
 import { TaskCard } from '@/components/tasks/task-card';
 import { WorkspaceFilters } from './filters';
@@ -73,14 +73,14 @@ export default async function Workspace({ searchParams }: { searchParams: Promis
       departmentId: dept.id,
       quarter: plan.quarter,
       status: plan.status,
-      activities: activities.map((a) => ({ id: a.id, weight: a.weight, steps: a.steps.map((s) => ({ id: s.id, weight: s.weight, progress: s.progress, status: s.status, weeks: s.weeks, lastUpdateAt: s.last_update_at })) })),
+      activities: activities.map((a) => ({ id: a.id, weight: a.weight, steps: a.steps.map(stepFact) })),
     },
     boundaries,
     { asOf: period.today, staleAfterDays: staleDays },
   );
 
   const canUpdate = plan.status === 'approved';
-  const tasks = activities.flatMap((a) => a.steps.map((s) => ({ step: s, task: toTask(s, { activityTitle: a.title, boundaries, asOf: period.today, canUpdate, departmentId: dept.id }) })));
+  const tasks = activities.flatMap((a) => a.steps.map((s) => ({ step: s, weeks: effectiveWeeks(stepFact(s), boundaries), task: toTask(s, { activityTitle: a.title, boundaries, asOf: period.today, canUpdate, departmentId: dept.id }) })));
   const people = [...new Set(tasks.map((t) => t.task.assigneeName ?? t.task.responsible).filter(Boolean) as string[])].sort();
   const who = sp.who && people.includes(sp.who) ? sp.who : null;
   const filtered = who ? tasks.filter((t) => (t.task.assigneeName ?? t.task.responsible) === who || (t.task.responsible ?? '').includes(who)) : tasks;
@@ -88,7 +88,7 @@ export default async function Workspace({ searchParams }: { searchParams: Promis
   const curWeek = currentWeekIndex(boundaries, period.today);
   const qEnded = boundaries.at(-1)!.end < period.today;
   const late = filtered.filter((t) => t.task.isLate && t.step.status !== 'completed').sort((a, b) => b.task.daysLate - a.task.daysLate);
-  const thisWeek = curWeek ? filtered.filter((t) => t.step.weeks.includes(curWeek) && !(t.task.isLate && t.step.status !== 'completed')) : [];
+  const thisWeek = curWeek ? filtered.filter((t) => t.weeks.includes(curWeek) && !(t.task.isLate && t.step.status !== 'completed')) : [];
   const months = [...new Set(boundaries.map((b) => b.month))];
   const curMonth = boundaries.find((b) => b.weekIndex === curWeek)?.month;
   const month = Number(sp.m) && months.includes(Number(sp.m)) ? Number(sp.m) : curMonth ?? months[0];
@@ -143,14 +143,14 @@ export default async function Workspace({ searchParams }: { searchParams: Promis
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <nav className="flex gap-1 rounded-lg border border-line bg-surface p-1" aria-label="العرض">
+        <nav className="flex gap-1 overflow-x-auto rounded-full border border-line bg-surface p-1" aria-label="العرض">
           {[
             ['week', 'هذا الأسبوع'],
             ['month', 'الشهر'],
             ['late', `المتأخرة (${late.length})`],
             ['activities', 'الأنشطة'],
           ].map(([k, l]) => (
-            <Link key={k} href={`${base}&view=${k}`} aria-current={view === k ? 'page' : undefined} className={`rounded-md px-3 py-1.5 text-sm ${view === k ? 'bg-teal font-semibold text-white dark:text-[#04141b]' : 'text-muted hover:text-text'}`}>
+            <Link key={k} href={`${base}&view=${k}`} aria-current={view === k ? 'page' : undefined} className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm ${view === k ? 'bg-teal font-semibold text-white dark:text-[#04141b]' : 'text-muted hover:text-text'}`}>
               {l}
             </Link>
           ))}
@@ -165,7 +165,7 @@ export default async function Workspace({ searchParams }: { searchParams: Promis
               {late.length > 0 && (
                 <section>
                   <h2 className="mb-2 text-sm font-semibold text-late">متأخرة من أسابيع سابقة ({late.length})</h2>
-                  <div className="grid gap-3 md:grid-cols-2">{late.slice(0, 4).map((t) => <TaskCard key={t.task.id} t={t.task} />)}</div>
+                  <div className="grid gap-3 md:grid-cols-2">{late.slice(0, 4).map((t) => <TaskCard key={t.task.id} t={t.task} from="/workspace" />)}</div>
                   {late.length > 4 && (
                     <Link href={`${base}&view=late`} className="mt-2 inline-block text-sm text-teal underline">
                       عرض كل المتأخرة
@@ -176,7 +176,7 @@ export default async function Workspace({ searchParams }: { searchParams: Promis
               <section>
                 <h2 className="mb-2 text-sm font-semibold text-ink">مجدولة هذا الأسبوع ({thisWeek.length})</h2>
                 {thisWeek.length ? (
-                  <div className="grid gap-3 md:grid-cols-2">{thisWeek.map((t) => <TaskCard key={t.task.id} t={t.task} />)}</div>
+                  <div className="grid gap-3 md:grid-cols-2">{thisWeek.map((t) => <TaskCard key={t.task.id} t={t.task} from="/workspace" />)}</div>
                 ) : (
                   <EmptyState title={qEnded ? 'انتهى الربع' : 'لا مهام مجدولة هذا الأسبوع'} body="اطّلع على عرض الشهر لمعرفة ما هو قادم." />
                 )}
@@ -197,7 +197,7 @@ export default async function Workspace({ searchParams }: { searchParams: Promis
                 {boundaries
                   .filter((b) => b.month === month)
                   .map((b) => {
-                    const items = filtered.filter((t) => t.step.weeks.includes(b.weekIndex));
+                    const items = filtered.filter((t) => t.weeks.includes(b.weekIndex));
                     const isNow = b.weekIndex === curWeek;
                     return (
                       <div key={b.weekIndex} className={`rounded-xl border p-3 ${isNow ? 'border-orange bg-orange-soft/40' : 'border-line bg-surface'}`}>
@@ -222,7 +222,7 @@ export default async function Workspace({ searchParams }: { searchParams: Promis
                               </div>
                               <p className="mt-0.5 truncate text-xs text-muted">{t.task.activityTitle}</p>
                               <p className="truncate text-xs text-muted">{t.task.assigneeName ?? t.task.responsible}</p>
-                              {t.step.weeks.length > 1 && <p className="mt-1 text-[11px] text-teal">خطوة واحدة ممتدة {t.step.weeks.length} أسابيع</p>}
+                              {t.weeks.length > 1 && <p className="mt-1 text-[11px] text-teal">مهمة واحدة ممتدة {t.weeks.length} أسابيع</p>}
                             </li>
                           ))}
                         </ul>
@@ -236,9 +236,9 @@ export default async function Workspace({ searchParams }: { searchParams: Promis
           {view === 'late' && (
             <section>
               {late.length ? (
-                <div className="grid gap-3 md:grid-cols-2">{late.map((t) => <TaskCard key={t.task.id} t={t.task} />)}</div>
+                <div className="grid gap-3 md:grid-cols-2">{late.map((t) => <TaskCard key={t.task.id} t={t.task} from="/workspace" />)}</div>
               ) : (
-                <EmptyState title="لا توجد مهام متأخرة" body="كل الخطوات التي انتهى موعدها مكتملة." />
+                <EmptyState title="لا توجد مهام متأخرة" body="كل المهام التي انتهى موعدها مكتملة." />
               )}
             </section>
           )}
@@ -246,7 +246,7 @@ export default async function Workspace({ searchParams }: { searchParams: Promis
           {view === 'activities' && (
             <div className="grid gap-3 md:grid-cols-2">
               {activities.map((a) => (
-                <Link key={a.id} href={`/activities/${a.id}`} className="rounded-xl border border-line bg-surface p-4 hover:border-teal">
+                <Link key={a.id} href={`/activities/${a.id}`} className="card p-4 hover:border-teal">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold text-ink">{a.title}</h3>
                     <Pill tone={stateTone(a.eval.state)}>{ACTIVITY_STATE[a.eval.state]}</Pill>
@@ -256,7 +256,7 @@ export default async function Workspace({ searchParams }: { searchParams: Promis
                     <span className="num w-14 text-sm font-semibold">{fmtPct(a.eval.progress)}</span>
                   </div>
                   <p className="mt-2 text-xs text-muted">
-                    {a.eval.stepsCompleted} من {a.eval.stepsTotal} خطوات — حتى {fmtDate(a.eval.dueDate)}
+                    {a.eval.stepsCompleted} من {a.eval.stepsTotal} مهام — حتى {fmtDate(a.eval.dueDate)}
                   </p>
                 </Link>
               ))}

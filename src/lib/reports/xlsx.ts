@@ -43,6 +43,8 @@ export async function reportToXlsx(snap: ReportSnapshot, title: string, comment:
       ['المؤشر الجزئي', o.partialProgress === null ? null : o.partialProgress / 100],
       ['المخطط حتى التاريخ', o.planned === null ? null : o.planned / 100],
       ['إدارات بلا خطة معتمدة', o.missingDepartments.join('، ') || '—'],
+      ['المشاريع والأنشطة', o.counts ? `${o.counts.works.total} (${o.counts.works.projects} مشروع، ${o.counts.works.activities} نشاط) — مكتملة ${o.counts.works.completed}، جارية ${o.counts.works.inProgress}` : '—'],
+      ['المهام التنفيذية', o.counts ? `${o.counts.tasks.total} — مكتملة ${o.counts.tasks.completed}، متأخرة ${o.counts.tasks.late}` : '—'],
       ['تعليق المدير التنفيذي', comment ?? '—'],
     ],
     [28, 60],
@@ -51,9 +53,22 @@ export async function reportToXlsx(snap: ReportSnapshot, title: string, comment:
   const d = sheet(
     wb,
     'الإدارات',
-    ['الإدارة', 'الإنجاز', 'المخطط', 'الأنشطة', 'المكتملة', 'المتأخرة', 'المتعثرة', 'حالة البيانات'],
-    o.departments.map((x) => [x.name, x.progress === null ? null : x.progress / 100, x.planned === null ? null : x.planned / 100, x.activities, x.completed, x.late, x.stalled, DATA_STATE[x.dataState]]),
-    [26, 12, 12, 10, 10, 10, 10, 18],
+    ['الإدارة', 'الإنجاز', 'المخطط', 'المشاريع والأنشطة', 'منها مشاريع', 'المكتملة', 'المتأخرة', 'المتعثرة', 'المهام', 'المهام المكتملة', 'المهام المتأخرة', 'حالة البيانات'],
+    o.departments.map((x) => [
+      x.name,
+      x.progress === null ? null : x.progress / 100,
+      x.planned === null ? null : x.planned / 100,
+      x.activities,
+      x.counts?.works.projects ?? null,
+      x.completed,
+      x.late,
+      x.stalled,
+      x.counts?.tasks.total ?? null,
+      x.counts?.tasks.completed ?? null,
+      x.counts?.tasks.late ?? null,
+      DATA_STATE[x.dataState],
+    ]),
+    [26, 12, 12, 16, 12, 10, 10, 10, 10, 14, 14, 18],
   );
   d.getColumn(2).numFmt = '0.0%';
   d.getColumn(3).numFmt = '0.0%';

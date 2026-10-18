@@ -11,6 +11,8 @@ import { EmptyState, PageHeader, Panel, PanelHead, Notice } from '@/components/u
 import { fmtPct, fmtNum } from '@/lib/format';
 import { MONTHS, QUARTER_LABEL } from '@/lib/labels';
 import { evaluateStep } from '@/lib/engine/progress';
+import { deptCounts, orgCounts } from '@/lib/engine/counts';
+import { WorkCountsBlocks } from '@/components/dashboard/counts';
 
 export const metadata = { title: 'لوحة الأداء' };
 
@@ -57,17 +59,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     const org = evaluateQuarter(yp, period.quarter, { asOf: period.today, staleAfterDays: staleDays });
     const curve = orgCurve(yp, period.quarter, org, period.today);
     const quarters = [1, 2, 3, 4].map((q) => ({ q, e: evaluateQuarter(yp, q, { asOf: period.today, staleAfterDays: staleDays }) }));
-    const acts = org.departments.flatMap((d) => d.activities);
-    const counts = {
-      total: acts.length,
-      completed: acts.filter((a) => a.state === 'completed').length,
-      inProgress: acts.filter((a) => a.state === 'in_progress').length,
-      late: acts.filter((a) => a.state === 'late').length,
-      stalled: acts.filter((a) => a.state === 'stalled').length,
-      notStarted: acts.filter((a) => a.state === 'not_started' || a.state === 'upcoming').length,
-    };
     const b = yp.boundaries[period.quarter] ?? [];
     const plans = yp.plans.filter((p) => p.quarter === period.quarter && (p.status === 'approved' || p.status === 'archived'));
+    const wc = orgCounts(org, plans);
+    const deptWc = Object.fromEntries(org.departments.map((d) => [d.departmentId, deptCounts(d, plans.find((p) => p.id === d.planId))]));
     const months = [...new Set(b.map((w) => w.month))].map((m) => {
       const weeks = b.filter((w) => w.month === m).map((w) => w.weekIndex);
       const steps = plans.flatMap((p) => p.activities.flatMap((a) => a.steps)).filter((s) => s.weeks.some((w) => weeks.includes(w)));
@@ -93,49 +88,44 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       );
     }
 
-    const segs = [
-      ['مكتملة', counts.completed, 'var(--done)'],
-      ['جارية', counts.inProgress, 'var(--teal)'],
-      ['متأخرة', counts.late, 'var(--orange)'],
-      ['متعثرة', counts.stalled, 'var(--stalled)'],
-      ['لم تبدأ', counts.notStarted, 'var(--nodata)'],
-    ] as const;
-
     return (
       <div className="space-y-6">
         <Panel className="overflow-hidden">
           <div className="grid gap-0 lg:grid-cols-[18rem_1fr]">
-            <div className="flex flex-col justify-between gap-6 border-b border-line bg-sunken/60 p-6 lg:border-b-0 lg:border-l">
+            <div className="brand-hero flex flex-col justify-between gap-6 p-6">
               <div>
-                <p className="text-sm text-muted">إنجاز الخطة التشغيلية</p>
+                <p className="text-sm text-white/75">إنجاز الخطة التشغيلية</p>
                 {org.computable ? (
-                  <p className="num mt-1 text-6xl font-bold tracking-tight text-ink" style={{ textAlign: 'right' }}>
-                    {fmtNum(org.progress)}
-                    <span className="text-3xl text-muted">٪</span>
-                  </p>
+                  <>
+                    <p className="num mt-1 text-6xl font-bold tracking-tight text-white" style={{ textAlign: 'right' }}>
+                      {fmtNum(org.progress)}
+                      <span className="text-3xl text-white/60">٪</span>
+                    </p>
+                    <span className="accent-dash mt-3" aria-hidden />
+                  </>
                 ) : (
                   <div className="mt-2">
-                    <p className="text-xl font-bold text-ink">غير قابل للاحتساب بعد</p>
-                    <p className="mt-1 text-sm text-muted">
+                    <p className="text-xl font-bold text-white">غير قابل للاحتساب بعد</p>
+                    <p className="mt-1 text-sm text-white/75">
                       {org.missingDepartments.length === 1 ? 'إدارة واحدة' : `${org.missingDepartments.length} إدارات`} بلا خطة معتمدة:{' '}
                       {org.missingDepartments.map((id) => deptName(depts, id, true)).join('، ')}
                     </p>
                     {org.partialProgress !== null && (
-                      <p className="mt-3 rounded-lg bg-surface px-3 py-2 text-sm">
+                      <p className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-sm text-white">
                         مؤشر جزئي للإدارات المعتمدة: <span className="num font-bold">{fmtPct(org.partialProgress)}</span>
                       </p>
                     )}
                   </div>
                 )}
               </div>
-              <dl className="grid grid-cols-2 gap-4 text-sm">
+              <dl className="grid grid-cols-2 gap-4 border-t border-white/10 pt-4 text-sm">
                 <div>
-                  <dt className="text-muted">المخطط حتى اليوم</dt>
-                  <dd className="num text-lg font-semibold" style={{ textAlign: 'right' }}>{fmtPct(org.planned)}</dd>
+                  <dt className="text-white/70">المخطط حتى اليوم</dt>
+                  <dd className="num text-lg font-semibold text-white" style={{ textAlign: 'right' }}>{fmtPct(org.planned)}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted">الفارق</dt>
-                  <dd className="num text-lg font-semibold" style={{ textAlign: 'right', color: (org.progress ?? org.partialProgress ?? 0) >= (org.planned ?? 0) - 5 ? 'var(--done)' : 'var(--late)' }}>
+                  <dt className="text-white/70">الفارق</dt>
+                  <dd className="num text-lg font-semibold" style={{ textAlign: 'right', color: (org.progress ?? org.partialProgress ?? 0) >= (org.planned ?? 0) - 5 ? '#6fd3ad' : '#f5b25e' }}>
                     {org.planned === null ? '—' : fmtPct(Math.round(((org.progress ?? org.partialProgress ?? 0) - org.planned) * 10) / 10)}
                   </dd>
                 </div>
@@ -148,7 +138,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                   <span className="inline-block h-3 w-[3px] rounded bg-ink" /> المخطط حتى اليوم
                 </p>
               </div>
-              <Strata org={org} names={names} hrefFor={(d) => `/dashboard/department/${d.departmentId}${qs({})}`} />
+              <Strata org={org} names={names} counts={deptWc} hrefFor={(d) => `/dashboard/department/${d.departmentId}${qs({})}`} />
             </div>
           </div>
         </Panel>
@@ -161,35 +151,25 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             </div>
           </Panel>
           <Panel>
-            <PanelHead title="حالة الأنشطة" hint={`${counts.total} نشاطًا في خطط الربع المعتمدة`} />
+            <PanelHead title="المشاريع والأنشطة والمهام" hint="عدادان منفصلان لا يُجمعان في رقم واحد" />
             <div className="px-5 pb-5">
-              <div className="flex h-4 overflow-hidden rounded-full bg-sunken" aria-hidden>
-                {segs.map(([l, n, c]) => (n ? <div key={l} style={{ width: `${(n / Math.max(1, counts.total)) * 100}%`, background: c }} /> : null))}
-              </div>
-              <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 xl:grid-cols-2">
-                {segs.map(([l, n, c]) => (
-                  <li key={l} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
-                      {l}
-                    </span>
-                    <Link href={`/activities?year=${period.year}&q=${period.quarter}&state=${{ مكتملة: 'completed', جارية: 'in_progress', متأخرة: 'late', متعثرة: 'stalled', 'لم تبدأ': 'not_started' }[l]}`} className="num font-semibold text-ink hover:text-teal">
-                      {n}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <WorkCountsBlocks
+                counts={wc}
+                compact
+                hrefWorks={(st) => `/activities?year=${period.year}&q=${period.quarter}&state=${st}`}
+                hrefTasks={(st) => `/activities?year=${period.year}&q=${period.quarter}&tasks=${st}`}
+              />
               <h3 className="mt-6 mb-2 text-sm font-semibold text-ink">الإنجاز حسب الأشهر</h3>
               <ul className="divide-y divide-line text-sm">
                 {months.map((m) => (
                   <li key={m.m} className="flex items-center justify-between py-2">
                     <span>{MONTHS[m.m]}</span>
                     {m.future ? (
-                      <span className="text-muted">{m.scheduled} خطوة مجدولة</span>
+                      <span className="text-muted">{m.scheduled} مهمة مجدولة</span>
                     ) : (
                       <span className="flex gap-3">
                         <span className="text-muted">
-                          <span className="num font-semibold text-done">{m.done}</span> من {m.scheduled} منجزة
+                          <span className="num font-semibold text-done">{m.done}</span> من {m.scheduled} مهمة منجزة
                         </span>
                         {m.late > 0 && (
                           <span className="text-late">

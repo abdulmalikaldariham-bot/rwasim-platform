@@ -13,6 +13,7 @@ export interface Profile {
   department_id: string | null;
   job_title: string | null;
   is_active: boolean;
+  must_change_password?: boolean;
 }
 
 export const getSession = cache(async () => {
@@ -28,6 +29,8 @@ export async function requireSession(roles?: Role[]) {
   const s = await getSession();
   if (!s) redirect('/login');
   if (!s.profile.is_active) redirect('/login?inactive=1');
+  // كلمة مرور مؤقتة أو حساب جديد: لا وصول قبل تعيين كلمة مرور خاصة
+  if (s.profile.must_change_password) redirect('/auth/set-password');
   if (roles && !roles.includes(s.profile.role)) redirect('/?denied=1');
   return s;
 }
