@@ -15,7 +15,7 @@ export default async function SetPasswordPage() {
     <main className="grid min-h-dvh place-items-center bg-paper px-4 py-10">
       <div className="w-full max-w-sm">
         <Logo onSurface className="mx-auto mb-8 w-40" />
-        <div className="rounded-2xl border border-line bg-surface p-6 shadow-[var(--shadow)]">
+        <div className="card p-6 shadow-[var(--shadow)]">
           <h1 className="text-xl font-bold text-ink">{forced ? 'عيّن كلمة مرورك' : 'كلمة مرور جديدة'}</h1>
           <p className="mt-1 mb-5 text-sm text-muted">
             مرحبًا {s.profile.full_name}. {forced ? 'لأمان حسابك، اختر كلمة مرور خاصة بك قبل المتابعة.' : 'اختر كلمة مرور جديدة لحسابك.'}

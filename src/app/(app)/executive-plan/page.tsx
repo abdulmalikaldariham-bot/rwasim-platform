@@ -58,7 +58,7 @@ export default async function ExecutivePlan({ searchParams }: { searchParams: Pr
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-5 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 card px-5 py-3">
             <div className="flex items-center gap-3">
               <Pill tone={stateTone(ex.plan.status)}>{PLAN_STATUS[ex.plan.status as 'draft']}</Pill>
               <span className="text-sm text-muted">{ex.kpis.length} مؤشرًا في {ex.axes.length} محاور</span>

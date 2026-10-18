@@ -16,6 +16,9 @@ delete from storage.objects;
 delete from storage.buckets;
 delete from auth.users;
 grant usage on schema storage to anon, authenticated, service_role;
+-- صلاحيات التخزين كما في Supabase المستضاف (البيئة المحلية دون Docker لا تضبطها تلقائيًا)
+grant all on all tables in schema storage to anon, authenticated, service_role;
+grant all on all sequences in schema storage to anon, authenticated, service_role;
 SQL
 for f in "$DIR"/supabase/migrations/*.sql; do
   PGOPTIONS="-c client_min_messages=warning" psql "$PGURL" -q -v ON_ERROR_STOP=1 -f "$f" > /dev/null

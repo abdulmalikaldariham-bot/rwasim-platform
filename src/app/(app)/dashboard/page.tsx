@@ -92,37 +92,40 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       <div className="space-y-6">
         <Panel className="overflow-hidden">
           <div className="grid gap-0 lg:grid-cols-[18rem_1fr]">
-            <div className="flex flex-col justify-between gap-6 border-b border-line bg-sunken/60 p-6 lg:border-b-0 lg:border-l">
+            <div className="brand-hero flex flex-col justify-between gap-6 p-6">
               <div>
-                <p className="text-sm text-muted">إنجاز الخطة التشغيلية</p>
+                <p className="text-sm text-white/75">إنجاز الخطة التشغيلية</p>
                 {org.computable ? (
-                  <p className="num mt-1 text-6xl font-bold tracking-tight text-ink" style={{ textAlign: 'right' }}>
-                    {fmtNum(org.progress)}
-                    <span className="text-3xl text-muted">٪</span>
-                  </p>
+                  <>
+                    <p className="num mt-1 text-6xl font-bold tracking-tight text-white" style={{ textAlign: 'right' }}>
+                      {fmtNum(org.progress)}
+                      <span className="text-3xl text-white/60">٪</span>
+                    </p>
+                    <span className="accent-dash mt-3" aria-hidden />
+                  </>
                 ) : (
                   <div className="mt-2">
-                    <p className="text-xl font-bold text-ink">غير قابل للاحتساب بعد</p>
-                    <p className="mt-1 text-sm text-muted">
+                    <p className="text-xl font-bold text-white">غير قابل للاحتساب بعد</p>
+                    <p className="mt-1 text-sm text-white/75">
                       {org.missingDepartments.length === 1 ? 'إدارة واحدة' : `${org.missingDepartments.length} إدارات`} بلا خطة معتمدة:{' '}
                       {org.missingDepartments.map((id) => deptName(depts, id, true)).join('، ')}
                     </p>
                     {org.partialProgress !== null && (
-                      <p className="mt-3 rounded-lg bg-surface px-3 py-2 text-sm">
+                      <p className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-sm text-white">
                         مؤشر جزئي للإدارات المعتمدة: <span className="num font-bold">{fmtPct(org.partialProgress)}</span>
                       </p>
                     )}
                   </div>
                 )}
               </div>
-              <dl className="grid grid-cols-2 gap-4 text-sm">
+              <dl className="grid grid-cols-2 gap-4 border-t border-white/10 pt-4 text-sm">
                 <div>
-                  <dt className="text-muted">المخطط حتى اليوم</dt>
-                  <dd className="num text-lg font-semibold" style={{ textAlign: 'right' }}>{fmtPct(org.planned)}</dd>
+                  <dt className="text-white/70">المخطط حتى اليوم</dt>
+                  <dd className="num text-lg font-semibold text-white" style={{ textAlign: 'right' }}>{fmtPct(org.planned)}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted">الفارق</dt>
-                  <dd className="num text-lg font-semibold" style={{ textAlign: 'right', color: (org.progress ?? org.partialProgress ?? 0) >= (org.planned ?? 0) - 5 ? 'var(--done)' : 'var(--late)' }}>
+                  <dt className="text-white/70">الفارق</dt>
+                  <dd className="num text-lg font-semibold" style={{ textAlign: 'right', color: (org.progress ?? org.partialProgress ?? 0) >= (org.planned ?? 0) - 5 ? '#6fd3ad' : '#f5b25e' }}>
                     {org.planned === null ? '—' : fmtPct(Math.round(((org.progress ?? org.partialProgress ?? 0) - org.planned) * 10) / 10)}
                   </dd>
                 </div>

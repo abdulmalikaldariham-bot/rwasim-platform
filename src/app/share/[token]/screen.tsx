@@ -199,7 +199,7 @@ export function ShareScreen({ token, initial, tvMode = false }: { token: string;
       className={cn('relative flex min-h-dvh flex-col bg-paper text-text lg:h-dvh lg:overflow-hidden', hideUi && 'cursor-none')}
     >
       {/* الشريط العلوي */}
-      <header className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-line bg-deep px-4 py-3 text-white sm:px-6 lg:px-[2.2vw] lg:py-[1.4vh]">
+      <header className="flex flex-wrap items-center gap-x-6 gap-y-3 brand-hero border-b border-white/10 px-4 py-3 text-white sm:px-6 lg:px-[2.2vw] lg:py-[1.4vh]">
         <Logo light className="h-11 w-auto lg:h-[6.4vh] lg:min-h-10" />
         <div className="min-w-0 border-s border-white/15 ps-5">
           <h1 className="truncate text-base font-bold sm:text-lg lg:text-[clamp(1rem,1.5vw,1.9rem)]">{view.name}</h1>
@@ -601,7 +601,7 @@ function DrillPanel({ dept, onClose }: { dept: ShareDept; onClose: () => void })
         <ul className="flex-1 space-y-2 overflow-y-auto p-5">
           {acts.length === 0 && <li className="text-sm text-muted">لا توجد تفاصيل متاحة.</li>}
           {acts.map((a) => (
-            <li key={a.id} className="rounded-xl border border-line bg-surface p-4">
+            <li key={a.id} className="card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-semibold text-ink">{a.title}</p>
@@ -625,7 +625,7 @@ function DrillPanel({ dept, onClose }: { dept: ShareDept; onClose: () => void })
 
 // ---------------------------------------------------------------------
 function Card({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <section className={cn('rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow)] lg:p-[clamp(1rem,1.3vw,1.8rem)]', className)}>{children}</section>;
+  return <section className={cn('card p-4 shadow-[var(--shadow)] lg:p-[clamp(1rem,1.3vw,1.8rem)]', className)}>{children}</section>;
 }
 
 function Bar({ value, planned, color, thick }: { value: number | null; planned?: number | null; color: string; thick?: boolean }) {

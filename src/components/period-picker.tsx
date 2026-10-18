@@ -15,7 +15,7 @@ export function PeriodPicker({ years, year, quarter, showQuarter = true }: { yea
     <div className="flex items-center gap-2">
       <select
         aria-label="السنة"
-        className="h-10 rounded-lg border border-line bg-surface px-3 text-sm"
+        className="h-10 rounded-full border border-line bg-surface px-4 text-sm"
         value={year}
         onChange={(e) => go('year', e.target.value)}
       >
@@ -26,14 +26,14 @@ export function PeriodPicker({ years, year, quarter, showQuarter = true }: { yea
         ))}
       </select>
       {showQuarter && (
-        <div className="flex rounded-lg border border-line bg-surface p-0.5" role="group" aria-label="الربع">
+        <div className="flex rounded-full border border-line bg-surface p-0.5" role="group" aria-label="الربع">
           {[1, 2, 3, 4].map((q) => (
             <button
               key={q}
               onClick={() => go('q', String(q))}
               aria-pressed={q === quarter}
               title={QUARTER_LABEL[q]}
-              className={`h-9 rounded-md px-3 text-sm ${q === quarter ? 'bg-teal font-semibold text-white dark:text-[#04141b]' : 'text-muted hover:text-text'}`}
+              className={`h-9 rounded-full px-3.5 text-sm ${q === quarter ? 'bg-teal font-semibold text-white dark:text-[#04141b]' : 'text-muted hover:text-text'}`}
             >
               ر{q}
             </button>

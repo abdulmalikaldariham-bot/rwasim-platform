@@ -71,7 +71,7 @@ export default async function MyTasks({ searchParams }: { searchParams: Promise<
     ['upcoming', 'القادمة', upcoming.length],
     ['done', 'المكتملة', done.length],
   ];
-  const grid = 'grid gap-3 md:grid-cols-2 2xl:grid-cols-3';
+  const grid = 'grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3';
   const list = (items: TaskCardData[]) => <div className={grid}>{items.map((t) => <TaskCard key={t.id} t={t} from={`/my-tasks?view=${view}`} />)}</div>;
 
   return (
@@ -81,13 +81,13 @@ export default async function MyTasks({ searchParams }: { searchParams: Promise<
         <EmptyState title="لا توجد مهام مسندة إليك" body="تظهر هنا المهام التي يسندها إليك مدير الإدارة بعد اعتماد الخطة." />
       ) : (
         <>
-          <nav className="mb-5 flex gap-1 overflow-x-auto rounded-2xl border border-line bg-surface p-1 shadow-[var(--shadow)] sm:w-fit" aria-label="العرض">
+          <nav className="mb-5 flex gap-1 overflow-x-auto rounded-full border border-line bg-surface p-1 shadow-[var(--shadow)] sm:w-fit" aria-label="العرض">
             {tabs.map(([k, l, n]) => (
               <Link
                 key={k}
                 href={`/my-tasks?view=${k}`}
                 aria-current={view === k ? 'page' : undefined}
-                className={cn('flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm', view === k ? 'bg-teal font-semibold text-white dark:text-[#04141b]' : 'text-muted hover:text-text')}
+                className={cn('flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm', view === k ? 'bg-teal font-semibold text-white dark:text-[#04141b]' : 'text-muted hover:text-text')}
               >
                 {l}
                 <span className={cn('num rounded-full px-1.5 text-xs', view === k ? 'bg-white/20' : k === 'late' && n ? 'bg-orange-soft text-late' : 'bg-sunken')}>{n}</span>

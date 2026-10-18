@@ -12,7 +12,7 @@ export function ActivityCard({ a, dept, href, showWeight }: { a: ActivityRow; de
   const last = a.steps.map((s) => s.last_update_at).filter(Boolean).sort().at(-1) ?? null;
   const remaining = a.eval.stepsTotal - a.eval.stepsCompleted;
   return (
-    <Link href={href} className="group flex flex-col rounded-xl border border-line bg-surface p-4 transition hover:border-teal focus-visible:border-teal">
+    <Link href={href} className="group flex flex-col card p-4 transition hover:border-teal focus-visible:border-teal">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="font-semibold leading-snug text-ink group-hover:text-teal">{a.title}</h3>

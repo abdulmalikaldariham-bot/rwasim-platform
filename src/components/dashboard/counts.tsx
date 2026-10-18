@@ -41,7 +41,7 @@ export function WorkCountsBlocks({ counts, hrefWorks, hrefTasks, compact }: { co
 
 function Block({ title, total, sub, rows, href }: { title: string; total: number; sub: string; rows: [string, number, string, string][]; href?: (s: string) => string }) {
   return (
-    <div className="rounded-xl border border-line bg-surface p-4">
+    <div className="card p-4">
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm font-semibold text-ink">{title}</p>
         <p className="num text-3xl font-bold text-ink">{fmtNum(total)}</p>

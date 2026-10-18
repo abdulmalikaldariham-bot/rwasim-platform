@@ -9,7 +9,7 @@ export function KpiCard({ kpi, dept, href }: { kpi: KpiView; dept: string; href:
   const tone = stateTone(e.status);
   const unit = kpi.unit ? ` ${kpi.unit}` : kpi.kpi_type === 'percentage' ? '٪' : '';
   return (
-    <Link href={href} className="block rounded-xl border border-line bg-surface p-4 transition hover:border-teal">
+    <Link href={href} className="block card p-4 transition hover:border-teal">
       <div className="flex items-start justify-between gap-2">
         <p className="font-semibold leading-snug text-ink">{kpi.name}</p>
         <Pill tone={tone}>{KPI_STATUS[e.status]}</Pill>

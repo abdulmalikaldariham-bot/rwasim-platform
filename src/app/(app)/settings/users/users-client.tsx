@@ -181,7 +181,7 @@ export function UserRow({
             <summary className="flex h-8 cursor-pointer list-none items-center gap-1 rounded-lg px-2 text-xs text-teal hover:bg-teal-soft [&::-webkit-details-marker]:hidden">
               <MoreHorizontal size={16} /> إجراءات
             </summary>
-            <div className="absolute end-0 z-10 mt-1 flex w-40 flex-col items-stretch rounded-xl border border-line bg-surface p-1 shadow-lg [&>button]:justify-start">
+            <div className="absolute end-0 z-10 mt-1 flex w-40 flex-col items-stretch card p-1 shadow-lg [&>button]:justify-start">
             <Button variant="ghost" className="h-8 px-2 text-xs" disabled={pending} onClick={() => upd({ is_active: !u.is_active })}>
               {u.is_active ? 'تعطيل' : 'تفعيل'}
             </Button>

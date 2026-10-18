@@ -41,7 +41,7 @@ export function TaskCard({ t, from }: { t: TaskCardData; from?: string }) {
   const tone = t.status === 'completed' ? 'done' : t.isLate ? 'late' : stateTone(t.status);
   const href = `/tasks/${t.id}${from ? `?from=${encodeURIComponent(from)}` : ''}`;
   return (
-    <article className="group relative flex flex-col rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow)] transition hover:border-teal">
+    <article className="group relative flex min-w-0 flex-col card p-4 transition hover:border-teal">
       <span className="absolute inset-y-4 right-0 w-1 rounded-full" style={{ background: edge[tone] ?? 'var(--line)' }} aria-hidden />
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">

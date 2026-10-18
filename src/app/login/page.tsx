@@ -23,7 +23,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <LoginForm next={sp.next} />
         </div>
       </section>
-      <aside className="relative hidden overflow-hidden bg-nav lg:block" aria-hidden>
+      <aside className="brand-hero relative hidden overflow-hidden lg:block" aria-hidden>
         <div className="absolute inset-0 flex flex-col justify-between p-12">
           <div>
             <Logo light className="w-64 xl:w-72" />

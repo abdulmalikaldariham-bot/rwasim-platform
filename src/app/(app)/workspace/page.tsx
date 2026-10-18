@@ -143,14 +143,14 @@ export default async function Workspace({ searchParams }: { searchParams: Promis
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <nav className="flex gap-1 rounded-lg border border-line bg-surface p-1" aria-label="العرض">
+        <nav className="flex gap-1 overflow-x-auto rounded-full border border-line bg-surface p-1" aria-label="العرض">
           {[
             ['week', 'هذا الأسبوع'],
             ['month', 'الشهر'],
             ['late', `المتأخرة (${late.length})`],
             ['activities', 'الأنشطة'],
           ].map(([k, l]) => (
-            <Link key={k} href={`${base}&view=${k}`} aria-current={view === k ? 'page' : undefined} className={`rounded-md px-3 py-1.5 text-sm ${view === k ? 'bg-teal font-semibold text-white dark:text-[#04141b]' : 'text-muted hover:text-text'}`}>
+            <Link key={k} href={`${base}&view=${k}`} aria-current={view === k ? 'page' : undefined} className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm ${view === k ? 'bg-teal font-semibold text-white dark:text-[#04141b]' : 'text-muted hover:text-text'}`}>
               {l}
             </Link>
           ))}
@@ -246,7 +246,7 @@ export default async function Workspace({ searchParams }: { searchParams: Promis
           {view === 'activities' && (
             <div className="grid gap-3 md:grid-cols-2">
               {activities.map((a) => (
-                <Link key={a.id} href={`/activities/${a.id}`} className="rounded-xl border border-line bg-surface p-4 hover:border-teal">
+                <Link key={a.id} href={`/activities/${a.id}`} className="card p-4 hover:border-teal">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold text-ink">{a.title}</h3>
                     <Pill tone={stateTone(a.eval.state)}>{ACTIVITY_STATE[a.eval.state]}</Pill>

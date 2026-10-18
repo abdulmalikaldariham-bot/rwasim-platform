@@ -447,13 +447,22 @@ await step('5. إلغاء الرابط يوقف الشاشات المفتوحة 
 
 // ---------- 21: الهوية على الجوال وسطح المكتب ----------
 await step('21. الهوية البصرية على الجوال وسطح المكتب دون تمرير أفقي', async () => {
-  const pages = ['/dashboard', '/my-tasks', '/activities', '/share-links', `/tasks/${T2.id}`, `/plans/${commPlan.id}`];
+  const pages = ['/dashboard', '/dashboard?axis=exec', '/my-tasks', '/activities', '/workspace', '/executive', '/plans', '/reports', '/settings', '/settings/users', '/share-links', `/tasks/${T2.id}`, `/plans/${commPlan.id}`, `/plans/${commPlan.id}/weights`];
   const bad = [];
   const m = await session('ed@demo.rawasim.local', { width: 390, height: 844 });
+  const wide = () => document.documentElement.scrollWidth > innerWidth + 1;
   for (const u of pages) {
     await m.page.goto(BASE + u, { waitUntil: 'networkidle0' });
-    if (await m.page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) bad.push(u);
+    if (await m.page.evaluate(wide)) bad.push(u);
   }
+  // الموظف المكلف: كل عروض «مهامي» وصفحة المهمة
+  const e = await session('rashid@demo.rawasim.local', { width: 390, height: 844 });
+  for (const v of ['week', 'month', 'late', 'upcoming', 'done']) {
+    await e.page.goto(BASE + '/my-tasks?view=' + v, { waitUntil: 'networkidle0' });
+    if (await e.page.evaluate(wide)) bad.push('موظف /my-tasks?view=' + v);
+  }
+  await e.page.goto(BASE + `/tasks/${T2.id}`, { waitUntil: 'networkidle0' });
+  if (await e.page.evaluate(wide)) bad.push('موظف /tasks');
   await shot(m.page, 'plan_mobile');
   const login = await anonPage(390, 844);
   await login.goto(BASE + '/login', { waitUntil: 'networkidle0' });

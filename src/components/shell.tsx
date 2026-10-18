@@ -124,8 +124,8 @@ export function Shell({
                 onClick={() => setOpen(false)}
                 aria-current={on ? 'page' : undefined}
                 className={cn(
-                  'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[0.93rem] transition-colors',
-                  on ? 'bg-white/10 font-semibold text-white' : 'text-nav-text hover:bg-white/5 hover:text-white',
+                  'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[0.93rem] transition-colors',
+                  on ? 'bg-white/12 font-semibold text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]' : 'text-nav-text hover:bg-white/5 hover:text-white',
                 )}
               >
                 {on && <span className="absolute inset-y-2 right-0 w-1 rounded-full bg-orange" aria-hidden />}
@@ -159,8 +159,8 @@ export function Shell({
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_1fr]">
-      <aside className="no-print sticky top-0 hidden h-dvh overflow-y-auto bg-nav lg:block">{nav}</aside>
-      <div className="no-print sticky top-0 z-30 flex items-center justify-between bg-nav px-4 py-3 lg:hidden">
+      <aside className="brand-hero no-print sticky top-0 hidden h-dvh overflow-y-auto lg:block">{nav}</aside>
+      <div className="brand-hero no-print sticky top-0 z-30 flex items-center justify-between px-4 py-3 lg:hidden">
         <Wordmark compact />
         <button onClick={() => setOpen(true)} className="rounded-lg p-2 text-white" aria-label="القائمة">
           <Menu />
@@ -169,7 +169,7 @@ export function Shell({
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal>
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 right-0 w-72 overflow-y-auto bg-nav">
+          <div className="brand-hero absolute inset-y-0 right-0 w-72 overflow-y-auto">
             <button onClick={() => setOpen(false)} className="absolute top-5 left-4 p-1 text-white" aria-label="إغلاق">
               <X />
             </button>
