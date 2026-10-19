@@ -28,6 +28,7 @@ export interface LinkRow {
   show_operational: boolean;
   show_executive: boolean;
   show_activities: boolean;
+  show_year?: boolean;
   kpi_ids: string[] | null;
   kpi_limit: number;
   refresh_seconds: number;
@@ -157,6 +158,7 @@ export function ShareLinksClient({ links, years, kpis }: { links: LinkRow[]; yea
                   {l.show_operational && <Tag>المحور التشغيلي</Tag>}
                   {l.show_executive && <Tag>المحور التنفيذي{l.kpi_ids?.length ? ` (${l.kpi_ids.length} مؤشرات)` : ''}</Tag>}
                   {l.show_activities && <Tag>تفاصيل المشاريع والأنشطة</Tag>}
+                  {l.show_operational && l.show_year && <Tag>السنة كاملة</Tag>}
                   {l.protected ? (
                     <Tag tone="orange">
                       <LockKeyhole size={12} /> برمز وصول
@@ -264,6 +266,7 @@ function LinkForm({ link, years, kpis, onClose, onCreated }: { link: LinkRow | n
     show_operational: link?.show_operational ?? true,
     show_executive: link?.show_executive ?? true,
     show_activities: link?.show_activities ?? false,
+    show_year: link?.show_year ?? false,
     kpi_ids: link?.kpi_ids ?? null,
     kpi_limit: link?.kpi_limit ?? 9,
     refresh_seconds: link?.refresh_seconds ?? 300,
@@ -334,8 +337,9 @@ function LinkForm({ link, years, kpis, onClose, onCreated }: { link: LinkRow | n
           <legend className="mb-1 text-sm font-medium text-text">البيانات المعروضة</legend>
           <Check checked={f.show_operational} onChange={(v) => set('show_operational', v)} label="المحور التشغيلي: إنجاز الجمعية والإدارات، أعداد المشاريع والأنشطة والمهام، المخطط مقابل المتحقق" />
           {f.show_operational && (
-            <div className="ms-7">
+            <div className="ms-7 space-y-2">
               <Check checked={f.show_activities} onChange={(v) => set('show_activities', v)} label="السماح بالتعمق: أسماء المشاريع والأنشطة ونسبها داخل كل إدارة" />
+              <Check checked={f.show_year} onChange={(v) => set('show_year', v)} label="عرض السنة كاملة: إنجاز كل ربع وإنجاز الإدارات في كل الأرباع، والإنجاز السنوي = متوسط الأرباع حتى الربع الحالي" />
             </div>
           )}
           <Check checked={f.show_executive} onChange={(v) => set('show_executive', v)} label="المحور التنفيذي: الأهداف والمؤشرات (المستهدف والمتحقق ونسبة التحقق)" />
