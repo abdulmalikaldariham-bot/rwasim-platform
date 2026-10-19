@@ -3,9 +3,9 @@
 // يُنفذ على الخادم فقط؛ المتصفح يتلقى الأرقام النهائية دون الحقائق الخام.
 // =====================================================================
 import 'server-only';
-import { buildYearProgress, evaluateQuarter, type FactRow, type WeekRow } from '../data/progress';
+import { buildYearProgress, evaluateQuarter, quarterOf, type FactRow, type WeekRow } from '../data/progress';
 import { orgCurve } from '../data/common';
-import { deptCounts, orgCounts, type WorkCounts } from '../engine/counts';
+import { deptCounts, emptyCounts, orgCounts, type WorkCounts } from '../engine/counts';
 import { evaluateKpi, type KpiDirection, type KpiStatus, type KpiType } from '../engine/kpi';
 import type { ActivityKind, ActivityState, DataState } from '../engine/types';
 import type { CurvePoint } from '../engine/progress';
@@ -37,6 +37,21 @@ export interface ShareKpi {
   status: KpiStatus;
 }
 
+export type QuarterState = 'done' | 'current' | 'upcoming';
+
+/** عرض «السنة كاملة»: إنجاز كل ربع، والسنوي = متوسط الأرباع حتى الربع الحالي */
+export interface ShareYear {
+  /** آخر ربع داخل الاحتساب (0 = لم تبدأ السنة بعد) */
+  upto: number;
+  progress: number | null;
+  planned: number | null;
+  /** عدد الأرباع التي دخلت المتوسط فعلًا (لها خطط معتمدة) */
+  counted: number;
+  quarters: { quarter: number; state: QuarterState; hasPlans: boolean; computable: boolean; progress: number | null; planned: number | null }[];
+  depts: { id: string; name: string; short: string; quarters: (number | null)[]; progress: number | null }[];
+  counts: WorkCounts;
+}
+
 export interface ShareView {
   ok: true;
   name: string;
@@ -45,7 +60,7 @@ export interface ShareView {
   years: number[];
   today: string;
   generatedAt: string;
-  settings: { allowPeriodSwitch: boolean; showOperational: boolean; showExecutive: boolean; showActivities: boolean; refreshSeconds: number };
+  settings: { allowPeriodSwitch: boolean; showOperational: boolean; showExecutive: boolean; showActivities: boolean; showYear: boolean; refreshSeconds: number };
   ops: null | {
     hasPlans: boolean;
     computable: boolean;
@@ -55,6 +70,7 @@ export interface ShareView {
     curve: CurvePoint[];
     counts: WorkCounts;
     depts: ShareDept[];
+    year: ShareYear | null;
   };
   exec: null | {
     hasPlan: boolean;
@@ -76,6 +92,7 @@ export function buildShareView(raw: any): ShareView | ShareFailure {
     showOperational: !!st.show_operational,
     showExecutive: !!st.show_executive,
     showActivities: !!st.show_activities,
+    showYear: !!st.show_year,
     refreshSeconds: Number(st.refresh_seconds) || 300,
   };
 
@@ -125,6 +142,7 @@ export function buildShareView(raw: any): ShareView | ShareFailure {
       curve: orgCurve(yp, quarter, org, today),
       counts: orgCounts(org, plans),
       depts,
+      year: settings.showYear ? buildYear(yp, year, today, deptsRaw) : null,
     };
   }
 
@@ -187,5 +205,63 @@ export function buildShareView(raw: any): ShareView | ShareFailure {
     settings,
     ops,
     exec,
+  };
+}
+
+const avg = (xs: (number | null)[]): number | null => {
+  const v = xs.filter((x): x is number => x !== null);
+  return v.length ? Math.round((v.reduce((a, b) => a + b, 0) / v.length) * 10) / 10 : null;
+};
+
+/** إنجاز السنة: كل ربع يُقيّم كما هو (المنتهي في نهايته)، والسنوي متوسط الأرباع حتى الربع الحالي التي لها خطط معتمدة */
+function buildYear(yp: ReturnType<typeof buildYearProgress>, year: number, today: string, deptsRaw: { id: string; name: string; short: string }[]): ShareYear {
+  const ty = Number(today.slice(0, 4));
+  const cq = quarterOf(today);
+  const upto = year < ty ? 4 : year > ty ? 0 : cq;
+  const evals = [1, 2, 3, 4].map((q) => evaluateQuarter(yp, q, { asOf: today }));
+  const approved = (q: number) => yp.plans.some((p) => p.quarter === q && (p.status === 'approved' || p.status === 'archived'));
+
+  const quarters = evals.map((e, i) => {
+    const q = i + 1;
+    const hasPlans = approved(q);
+    const state: QuarterState = q < upto || (q === upto && year < ty) ? 'done' : q === upto ? 'current' : 'upcoming';
+    return {
+      quarter: q,
+      state,
+      hasPlans,
+      computable: e.computable,
+      progress: hasPlans ? (e.computable ? e.progress : e.partialProgress) : null,
+      planned: hasPlans ? e.planned : null,
+    };
+  });
+  const inScope = quarters.filter((q) => q.quarter <= upto && q.progress !== null);
+
+  const counts = emptyCounts();
+  for (let q = 1; q <= upto; q++) {
+    const c = orgCounts(evals[q - 1], yp.plans.filter((p) => p.quarter === q));
+    for (const k of Object.keys(counts.works) as (keyof WorkCounts['works'])[]) counts.works[k] += c.works[k];
+    for (const k of Object.keys(counts.tasks) as (keyof WorkCounts['tasks'])[]) counts.tasks[k] += c.tasks[k];
+  }
+
+  const depts = yp.weights.map((w) => {
+    const info = deptsRaw.find((x) => x.id === w.departmentId);
+    const qs = evals.map((e) => e.departments.find((d) => d.departmentId === w.departmentId)?.progress ?? null);
+    return {
+      id: w.departmentId,
+      name: info?.name ?? '—',
+      short: info?.short ?? info?.name ?? '—',
+      quarters: qs,
+      progress: avg(qs.slice(0, upto)),
+    };
+  });
+
+  return {
+    upto,
+    progress: avg(inScope.map((q) => q.progress)),
+    planned: avg(inScope.map((q) => q.planned)),
+    counted: inScope.length,
+    quarters,
+    depts,
+    counts,
   };
 }
