@@ -24,6 +24,7 @@ export interface ShareLinkInput {
   show_operational: boolean;
   show_executive: boolean;
   show_activities: boolean;
+  show_year: boolean;
   kpi_ids: string[] | null;
   kpi_limit: number;
   refresh_seconds: number;
@@ -53,6 +54,7 @@ function clean(i: ShareLinkInput) {
       show_operational: !!i.show_operational,
       show_executive: !!i.show_executive,
       show_activities: !!i.show_activities,
+      show_year: !!i.show_operational && !!i.show_year,
       kpi_ids: i.kpi_ids && i.kpi_ids.length ? i.kpi_ids : null,
       kpi_limit: limit,
       refresh_seconds: refresh,
