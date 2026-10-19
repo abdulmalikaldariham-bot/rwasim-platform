@@ -7,11 +7,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { CircleAlert, Expand, Minimize, Moon, Pause, Play, RefreshCw, Sun, Tv, X } from 'lucide-react';
 import { Logo } from '@/components/brand';
 import { CurveChart } from '@/components/dashboard/curve';
-import type { ShareDept, ShareKpi, ShareView } from '@/lib/share/view';
+import type { ShareDept, ShareKpi, ShareView, ShareYear } from '@/lib/share/view';
 import { ACTIVITY_STATE, DATA_STATE, KPI_STATUS, QUARTER_LABEL } from '@/lib/labels';
 import { cn, fmtNum, fmtPct } from '@/lib/format';
 
 type Axis = 'ops' | 'exec';
+type Span = 'quarter' | 'year';
 const tf = new Intl.DateTimeFormat('ar-SA-u-nu-latn-ca-gregory', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh' });
 const dtf = new Intl.DateTimeFormat('ar-SA-u-nu-latn-ca-gregory', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' });
 
@@ -67,6 +68,20 @@ export function ShareScreen({ token, initial, tvMode = false }: { token: string;
   const [period, setPeriod] = useState<{ y: number | null; q: number | null }>({ y: null, q: null });
   const both = !!view.ops && !!view.exec;
   const [axis, setAxis] = useState<Axis>(view.ops ? 'ops' : 'exec');
+  const [span, setSpan] = useState<Span>('quarter');
+  const hasYear = !!view.ops?.year;
+  const showingYear = axis === 'ops' && hasYear && span === 'year';
+  // شرائح التدوير في وضع التلفاز: الربع ← السنة كاملة ← التنفيذي
+  const slides = useMemo(() => {
+    const l: [Axis, Span][] = [];
+    if (view.ops) {
+      l.push(['ops', 'quarter']);
+      if (view.ops.year) l.push(['ops', 'year']);
+    }
+    if (view.exec) l.push(['exec', 'quarter']);
+    return l;
+  }, [view.ops, view.exec]);
+  const multi = slides.length > 1;
   const [rotate, setRotate] = useState(tvMode);
   const [tv, setTv] = useState(tvMode);
   const [full, setFull] = useState(false);
@@ -130,12 +145,17 @@ export function ShareScreen({ token, initial, tvMode = false }: { token: string;
     return () => window.clearInterval(id);
   }, []);
 
-  // التدوير بين المحورين في وضع التلفاز
+  // التدوير بين الشرائح في وضع التلفاز
   useEffect(() => {
-    if (!rotate || !both || drill) return;
-    const id = window.setInterval(() => setAxis((a) => (a === 'ops' ? 'exec' : 'ops')), 25_000);
+    if (!rotate || !multi || drill) return;
+    const id = window.setInterval(() => {
+      const i = slides.findIndex(([a, sp]) => a === axis && (a === 'exec' || sp === span || !hasYear));
+      const [na, ns] = slides[(i + 1) % slides.length];
+      setAxis(na);
+      setSpan(ns);
+    }, 25_000);
     return () => window.clearInterval(id);
-  }, [rotate, both, drill]);
+  }, [rotate, multi, drill, slides, axis, span, hasYear]);
 
   // إخفاء أدوات التحكم والمؤشر عند الخمول في وضع التلفاز/ملء الشاشة
   useEffect(() => {
@@ -204,7 +224,7 @@ export function ShareScreen({ token, initial, tvMode = false }: { token: string;
         <div className="min-w-0 border-s border-white/15 ps-5">
           <h1 className="truncate text-base font-bold sm:text-lg lg:text-[clamp(1rem,1.5vw,1.9rem)]">{view.name}</h1>
           <p className="text-xs text-white/65 lg:text-[clamp(.75rem,.85vw,1.05rem)]">
-            {QUARTER_LABEL[view.quarter]} {view.year}م — {dtf.format(now)}
+            {showingYear ? `السنة كاملة ${view.year}م` : `${QUARTER_LABEL[view.quarter]} ${view.year}م`} — {dtf.format(now)}
           </p>
         </div>
 
@@ -231,6 +251,29 @@ export function ShareScreen({ token, initial, tvMode = false }: { token: string;
           </nav>
         )}
 
+        {axis === 'ops' && hasYear && (
+          <nav className="flex rounded-full bg-white/10 p-1 text-sm lg:text-[clamp(.8rem,.9vw,1.1rem)]" aria-label="الفترة المعروضة">
+            {(
+              [
+                ['quarter', 'الربع'],
+                ['year', 'السنة كاملة'],
+              ] as const
+            ).map(([k, l]) => (
+              <button
+                key={k}
+                onClick={() => {
+                  setSpan(k);
+                  setRotate(false);
+                }}
+                aria-pressed={span === k}
+                className={cn('rounded-full px-4 py-1.5 transition', span === k ? 'bg-white font-semibold text-[#04141b]' : 'text-white/75 hover:text-white')}
+              >
+                {l}
+              </button>
+            ))}
+          </nav>
+        )}
+
         <div className="ms-auto flex items-center gap-3">
           {view.settings.allowPeriodSwitch && (
             <div className={cn('flex items-center gap-1 transition-opacity', hideUi && 'opacity-0')}>
@@ -248,6 +291,7 @@ export function ShareScreen({ token, initial, tvMode = false }: { token: string;
               </select>
               <select
                 aria-label="الربع"
+                hidden={showingYear}
                 value={view.quarter}
                 onChange={(e) => changePeriod(view.year, Number(e.target.value))}
                 className="rounded-lg border border-white/15 bg-white/10 px-2 py-1 text-sm text-white [&>option]:text-black"
@@ -265,8 +309,8 @@ export function ShareScreen({ token, initial, tvMode = false }: { token: string;
             <IconBtn label="تحديث الآن" onClick={() => refresh()}>
               <RefreshCw size={17} className={loading ? 'animate-spin' : ''} />
             </IconBtn>
-            {both && (
-              <IconBtn label={rotate ? 'إيقاف التدوير' : 'تدوير المحورين'} onClick={() => setRotate((r) => !r)}>
+            {multi && (
+              <IconBtn label={rotate ? 'إيقاف التدوير' : 'تدوير الشرائح'} onClick={() => setRotate((r) => !r)}>
                 {rotate ? <Pause size={17} /> : <Play size={17} />}
               </IconBtn>
             )}
@@ -277,7 +321,7 @@ export function ShareScreen({ token, initial, tvMode = false }: { token: string;
               label={tv ? 'إنهاء وضع التلفاز' : 'وضع التلفاز'}
               onClick={() => {
                 setTv((t) => !t);
-                if (both) setRotate(!tv);
+                if (multi) setRotate(!tv);
               }}
               active={tv}
             >
@@ -298,7 +342,8 @@ export function ShareScreen({ token, initial, tvMode = false }: { token: string;
 
       {/* المحتوى */}
       <div className="min-h-0 flex-1 p-4 sm:p-6 lg:px-[2.2vw] lg:py-[2.2vh]">
-        {axis === 'ops' && view.ops && <Operational ops={view.ops} drillable={view.settings.showActivities} onDrill={setDrill} />}
+        {showingYear && view.ops?.year && <YearOperational y={view.ops.year} year={view.year} />}
+        {axis === 'ops' && view.ops && !showingYear && <Operational ops={view.ops} drillable={view.settings.showActivities} onDrill={setDrill} />}
         {axis === 'exec' && view.exec && <Executive exec={view.exec} />}
       </div>
 
@@ -480,6 +525,136 @@ function CountCard({ title, total, sub, rows }: { title: string; total: number; 
         </ul>
       </div>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------
+// السنة كاملة: إنجاز الأرباع والإدارات عبر السنة
+// ---------------------------------------------------------------------
+const Q_STATE = { done: 'منتهٍ', current: 'جارٍ', upcoming: 'قادم' } as const;
+
+function YearOperational({ y, year }: { y: ShareYear; year: number }) {
+  if (y.upto === 0 || !y.quarters.some((q) => q.hasPlans)) {
+    return <Empty title={`لا توجد خطط تشغيلية معتمدة في ${year}م حتى الآن`} body="تظهر الأرقام هنا فور اعتماد خطط الإدارات." />;
+  }
+  const gap = y.progress !== null && y.planned !== null ? Math.round((y.progress - y.planned) * 10) / 10 : null;
+  const c = y.counts;
+  return (
+    <div className="grid h-full gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.75fr)] lg:gap-[1.6vw]">
+      <div className="flex min-h-0 flex-col gap-4 lg:gap-[2vh]">
+        <Card className="relative flex flex-col overflow-hidden lg:flex-[1.15]">
+          <p className="text-sm text-muted lg:text-[clamp(.85rem,1vw,1.3rem)]">إنجاز السنة حتى الآن</p>
+          <p className="num mt-1 font-bold leading-none tracking-tight text-ink text-[clamp(3.5rem,7.5vw,9.5rem)]">
+            {fmtNum(y.progress)}
+            <span className="text-[0.45em] text-muted">٪</span>
+          </p>
+          <p className="mt-2 text-sm text-muted lg:text-[clamp(.75rem,.85vw,1.05rem)]">
+            متوسط <span className="num">{y.counted}</span> {y.counted === 1 ? 'ربع' : 'أرباع'} حتى {QUARTER_LABEL[y.upto]}
+          </p>
+          <div className="mt-auto pt-[2vh]">
+            <Bar value={y.progress} planned={y.planned} color={pctColor(y.progress, y.planned)} thick />
+          </div>
+          <dl className="mt-[1.8vh] grid grid-cols-2 gap-3 text-[clamp(.8rem,.95vw,1.25rem)]">
+            <div>
+              <dt className="text-muted">المخطط حتى اليوم</dt>
+              <dd className="num text-[1.5em] font-semibold text-ink">{fmtPct(y.planned)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">الفارق عن المخطط</dt>
+              <dd className="num text-[1.5em] font-semibold" style={{ color: gap === null ? 'var(--muted)' : gap >= -5 ? 'var(--done)' : 'var(--late)' }}>
+                {gap === null ? '—' : `${gap > 0 ? '+' : ''}${fmtNum(gap)}٪`}
+              </dd>
+            </div>
+          </dl>
+        </Card>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:flex-1 lg:gap-[1.6vh]">
+          <CountCard
+            title="المشاريع والأنشطة خلال السنة"
+            total={c.works.total}
+            sub={`${fmtNum(c.works.projects)} مشروع · ${fmtNum(c.works.activities)} نشاط`}
+            rows={[
+              ['مكتملة', c.works.completed, 'var(--done)'],
+              ['جارية', c.works.inProgress, 'var(--teal)'],
+              ['متأخرة', c.works.late, 'var(--orange)'],
+            ]}
+          />
+          <CountCard
+            title="المهام خلال السنة"
+            total={c.tasks.total}
+            sub="داخل المشاريع والأنشطة"
+            rows={[
+              ['مكتملة', c.tasks.completed, 'var(--done)'],
+              ['جارية', c.tasks.inProgress, 'var(--teal)'],
+              ['متأخرة', c.tasks.late, 'var(--orange)'],
+            ]}
+          />
+        </div>
+      </div>
+
+      <div className="flex min-h-0 flex-col gap-4 lg:gap-[2vh]">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:gap-[1vw]">
+          {y.quarters.map((q) => {
+            const off = q.state === 'upcoming' || !q.hasPlans;
+            return (
+              <Card key={q.quarter} className={cn('flex flex-col', off && 'opacity-60')}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-ink lg:text-[clamp(.85rem,1vw,1.3rem)]">{QUARTER_LABEL[q.quarter]}</p>
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[11px] font-medium lg:text-[clamp(.65rem,.7vw,.9rem)]"
+                    style={{
+                      background: `color-mix(in oklab, ${q.state === 'current' ? 'var(--orange)' : q.state === 'done' ? 'var(--teal)' : 'var(--nodata)'} 18%, transparent)`,
+                      color: q.state === 'current' ? 'var(--orange)' : q.state === 'done' ? 'var(--teal)' : 'var(--muted)',
+                    }}
+                  >
+                    {Q_STATE[q.state]}
+                  </span>
+                </div>
+                <p className="num my-[1vh] font-bold leading-none text-ink text-[clamp(1.8rem,3vw,4rem)]">{q.hasPlans ? fmtPct(q.progress) : '—'}</p>
+                <div className="mt-auto">
+                  <Bar value={q.progress} planned={q.state === 'current' ? q.planned : null} color={pctColor(q.progress, q.planned)} />
+                  <p className="mt-1 text-[11px] text-muted lg:text-[clamp(.65rem,.72vw,.9rem)]">
+                    {!q.hasPlans ? 'لا خطط معتمدة' : !q.computable ? 'مؤشر جزئي' : q.state === 'upcoming' ? 'خارج احتساب السنة بعد' : '\u00a0'}
+                  </p>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+        <Card className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+          <h2 className="mb-[1.2vh] font-semibold text-ink lg:text-[clamp(1rem,1.15vw,1.5rem)]">إنجاز الإدارات عبر الأرباع</h2>
+          <div className="overflow-x-auto lg:min-h-0 lg:flex-1">
+            <table className="w-full border-separate border-spacing-y-[0.6vh] text-sm lg:h-full lg:text-[clamp(.8rem,1vw,1.35rem)]">
+              <thead>
+                <tr className="text-muted">
+                  <th className="pb-1 text-start font-medium">الإدارة</th>
+                  {[1, 2, 3, 4].map((q) => (
+                    <th key={q} className="pb-1 text-center font-medium">
+                      {QUARTER_LABEL[q].replace('الربع ', '')}
+                    </th>
+                  ))}
+                  <th className="pb-1 text-center font-semibold text-ink">السنة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {y.depts.map((d) => (
+                  <tr key={d.id} className="bg-sunken">
+                    <td className="rounded-s-xl px-3 py-2 font-semibold text-ink">{d.name}</td>
+                    {d.quarters.map((v, i) => (
+                      <td key={i} className={cn('num px-2 py-2 text-center', i + 1 > y.upto ? 'text-muted/60' : 'text-text')}>
+                        {v === null ? '—' : fmtPct(v)}
+                      </td>
+                    ))}
+                    <td className="num rounded-e-xl px-3 py-2 text-center font-bold" style={{ color: pctColor(d.progress, null) }}>
+                      {fmtPct(d.progress)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+    </div>
   );
 }
 
