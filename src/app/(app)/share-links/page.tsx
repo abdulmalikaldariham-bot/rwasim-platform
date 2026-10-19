@@ -10,7 +10,7 @@ export default async function ShareLinksPage() {
   const [{ data: links }, years, { data: kpis }] = await Promise.all([
     sb
       .from('share_links')
-      .select('id,token,name,follow_current,year,quarter,allow_period_switch,show_operational,show_executive,show_activities,kpi_ids,kpi_limit,refresh_seconds,access_code_hash,expires_at,is_active,revoked_at,created_at,last_viewed_at,view_count')
+      .select('id,token,name,follow_current,year,quarter,allow_period_switch,show_operational,show_executive,show_activities,show_year,kpi_ids,kpi_limit,refresh_seconds,access_code_hash,expires_at,is_active,revoked_at,created_at,last_viewed_at,view_count')
       .order('created_at', { ascending: false }),
     getYears(sb),
     sb.from('kpis').select('id,name,sort_order,exec_plans!inner(year,status)').order('sort_order'),
