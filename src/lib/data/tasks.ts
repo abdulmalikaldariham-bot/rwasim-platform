@@ -32,7 +32,7 @@ export function toTask(
     departmentName: ctx.departmentName,
     responsible: s.responsible_text,
     assigneeName: s.assigneeName,
-    assigneesCount: s.assignees.length + s.external_assignees.length,
+    assigneesCount: s.assignees.length,
     startDate: e.startDate,
     dueDate: e.dueDate,
     datesSource: s.dates_source,

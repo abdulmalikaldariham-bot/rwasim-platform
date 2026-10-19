@@ -166,16 +166,13 @@ run('الإصدار الثاني: المهام والإسناد والروابط
     expect((ok(await u.other.sb.from('steps').select('id').eq('id', step.A1)) as unknown[]).length).toBe(0);
   });
 
-  it('11b. جميع موظفي الجمعية للمدير التنفيذي فقط، وأسماء من خارج المنصة', async () => {
+  it('11b. جميع موظفي الجمعية للمدير التنفيذي فقط، ويشمل الإسناد للجميع من يُضاف لاحقًا', async () => {
     expect((await u.mgr.sb.rpc('set_step_assignees', { p_step: step.P1, p_users: [], p_scope: 'org' })).error?.message).toMatch(/المدير التنفيذي/);
-    // اسم خارجي يُضاف للعرض دون حساب، مع تنظيف الفراغات والتكرار
-    expect(ok(await u.mgr.sb.rpc('set_step_assignees', { p_step: step.P1, p_users: [u.e1.id], p_external: ['  ضيف  خارجي ', 'ضيف خارجي', ''] }))).toBe(2);
-    const s = ok(await u.mgr.sb.from('steps').select('assign_scope,external_assignees').eq('id', step.P1).single());
-    expect(s).toMatchObject({ assign_scope: 'none', external_assignees: ['ضيف خارجي'] });
-    expect(ok(await u.mgr.sb.rpc('set_step_assignees', { p_step: step.P1, p_users: [u.e1.id], p_external: [] }))).toBe(1);
-    // المدير التنفيذي يُسند لجميع موظفي الجمعية فيراها موظف إدارة أخرى
+    // المدير التنفيذي يُسند لجميع موظفي الجمعية فيراها موظف إدارة أخرى والمدير التنفيذي نفسه
     ok(await u.ed.sb.rpc('set_step_assignees', { p_step: step.P1, p_users: [], p_scope: 'org' }));
     expect((ok(await u.other.sb.from('steps').select('id').eq('id', step.P1)) as unknown[]).length).toBe(1);
+    const mine = ok(await u.ed.sb.from('step_assignees').select('user_id').eq('step_id', step.P1).eq('user_id', u.ed.id)) as unknown[];
+    expect(mine).toHaveLength(1);
     expect(ok(await u.ed.sb.rpc('set_step_assignees', { p_step: step.P1, p_users: [u.e1.id], p_scope: 'none' }))).toBe(1);
   });
 
