@@ -36,6 +36,10 @@ export interface StepRow {
   assignment_mode: 'shared' | 'individual';
   completion_threshold: number;
   assign_all: boolean;
+  /** none = اختيار يدوي، department = جميع موظفي الإدارة، org = جميع موظفي الجمعية */
+  assign_scope: 'none' | 'department' | 'org';
+  /** مكلفون من خارج المنصة بالاسم فقط */
+  external_assignees: string[];
   assignees: { user_id: string; name: string; is_lead: boolean; status: StepStatus; done_at: string | null; note: string | null }[];
 }
 
@@ -67,12 +71,19 @@ export interface PlanRow {
   updated_at: string;
 }
 
-export function assigneeSummary(list: { name: string; is_lead: boolean }[], all = false): string | null {
-  if (!list.length) return null;
-  if (all) return `جميع موظفي الإدارة (${list.length})`;
-  if (list.length === 1) return list[0].name;
-  const lead = list.find((a) => a.is_lead) ?? list[0];
-  return `${lead.name} و${list.length - 1} ${list.length - 1 === 1 ? 'آخر' : list.length - 1 <= 10 ? 'آخرين' : 'آخرين'}`;
+export function assigneeSummary(
+  list: { name: string; is_lead: boolean }[],
+  scope: StepRow['assign_scope'] = 'none',
+  external: string[] = [],
+): string | null {
+  const extra = external.length ? ` + ${external.length} من خارج المنصة` : '';
+  if (scope === 'org' && list.length) return `جميع موظفي الجمعية (${list.length})${extra}`;
+  if (scope === 'department' && list.length) return `جميع موظفي الإدارة (${list.length})${extra}`;
+  const names = [...list.map((a) => ({ name: a.name, is_lead: a.is_lead })), ...external.map((name) => ({ name, is_lead: false }))];
+  if (!names.length) return null;
+  if (names.length === 1) return names[0].name;
+  const lead = names.find((a) => a.is_lead) ?? names[0];
+  return `${lead.name} و${names.length - 1} ${names.length - 1 === 1 ? 'آخر' : 'آخرين'}`;
 }
 
 /** تحويل صف المهمة إلى مدخلات المحرك */
@@ -97,7 +108,7 @@ export async function getBoundaries(sb: SupabaseClient, year: number, quarter: n
 }
 
 const STEP_SELECT =
-  'id,activity_id,plan_id,seq,title,responsible_text,assignee_id,output,weight,suggested_weight,is_core,status,progress,actual_start,actual_end,import_followup,import_note,last_update_at,start_date,end_date,dates_source,output_achieved,output_policy,assignment_mode,completion_threshold,assign_all,step_weeks(week_index,intensity),substeps(id,title,weight,sort_order,is_done),evidence(count),step_assignees(user_id,is_lead,status,done_at,note,person:profiles!step_assignees_user_id_fkey(full_name))';
+  'id,activity_id,plan_id,seq,title,responsible_text,assignee_id,output,weight,suggested_weight,is_core,status,progress,actual_start,actual_end,import_followup,import_note,last_update_at,start_date,end_date,dates_source,output_achieved,output_policy,assignment_mode,completion_threshold,assign_all,assign_scope,external_assignees,step_weeks(week_index,intensity),substeps(id,title,weight,sort_order,is_done),evidence(count),step_assignees(user_id,is_lead,status,done_at,note,person:profiles!step_assignees_user_id_fkey(full_name))';
 
  
  
@@ -115,8 +126,10 @@ function mapStep(s: any): StepRow {
     substeps: ((s.substeps ?? []) as StepRow['substeps']).map((x) => ({ ...x, weight: Number(x.weight) })).sort((a, b) => a.sort_order - b.sort_order),
     evidenceCount: s.evidence?.[0]?.count ?? 0,
     completion_threshold: Number(s.completion_threshold ?? 100),
+    assign_scope: s.assign_scope,
+    external_assignees: s.external_assignees ?? [],
     assignees,
-    assigneeName: assigneeSummary(assignees, !!s.assign_all),
+    assigneeName: assigneeSummary(assignees, s.assign_scope, s.external_assignees ?? []),
   };
 }
 
