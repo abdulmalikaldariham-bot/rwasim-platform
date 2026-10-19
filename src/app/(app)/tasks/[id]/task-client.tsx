@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Check, Crown, FileText, Link2, Paperclip, Search, Trash2, UserPlus, X } from 'lucide-react';
+import { Check, Crown, FileText, Link2, Paperclip, Search, Trash2, X } from 'lucide-react';
 import { Button, Input, Label, Textarea } from '@/components/ui';
 import {
   addEvidenceLinkAction,
@@ -444,7 +444,6 @@ export function AssigneesPanel({
   mode: m0,
   threshold: t0,
   scope: scope0,
-  external: ext0,
   isEd,
   people,
   canManage,
@@ -455,7 +454,6 @@ export function AssigneesPanel({
   mode: 'shared' | 'individual';
   threshold: number;
   scope: Scope;
-  external: string[];
   isEd: boolean;
   people: { id: string; name: string; role: string; dept: string | null }[];
   canManage: boolean;
@@ -466,23 +464,16 @@ export function AssigneesPanel({
   const [sel, setSel] = useState<string[]>(assignees.map((a) => a.user_id));
   const [lead, setLead] = useState<string | null>(assignees.find((a) => a.is_lead)?.user_id ?? null);
   const [scope, setScope] = useState<Scope>(scope0);
-  const [ext, setExt] = useState<string[]>(ext0);
-  const [extName, setExtName] = useState('');
   const [mode, setMode] = useState(m0);
   const [threshold, setThreshold] = useState(t0);
   const [q, setQ] = useState('');
   const filtered = useMemo(() => people.filter((p) => !q.trim() || p.name.includes(q.trim())), [people, q]);
   const nameOf = (id: string) => people.find((p) => p.id === id)?.name ?? assignees.find((a) => a.user_id === id)?.name ?? '—';
-  const addExt = () => {
-    const n = extName.trim().replace(/\s+/g, ' ');
-    if (n && !ext.includes(n)) setExt([...ext, n]);
-    setExtName('');
-  };
 
   if (!editing) {
     return (
       <div>
-        {assignees.length === 0 && ext0.length === 0 ? (
+        {assignees.length === 0 ? (
           <p className="text-sm text-muted">لم تُسند لأحد بعد.</p>
         ) : (
           <ul className="flex flex-wrap gap-1.5">
@@ -492,19 +483,12 @@ export function AssigneesPanel({
                 {a.name}
               </li>
             ))}
-            {ext0.map((n) => (
-              <li key={`x:${n}`} className="inline-flex items-center gap-1 rounded-full border border-dashed border-line px-2.5 py-1 text-xs" title="من خارج المنصة">
-                <UserPlus size={12} className="text-muted" />
-                {n}
-              </li>
-            ))}
           </ul>
         )}
         <p className="mt-2 text-xs text-muted">
           {scope0 !== 'none' ? `مسندة لـ${SCOPE_LABEL[scope0]} — ` : ''}
           {m0 === 'individual' ? `فردية: تكتمل عند إنجاز ${fmtPct(t0)} من المكلفين` : 'مشتركة: إنجاز واحد للمهمة'}
         </p>
-        {ext0.length > 0 && <p className="mt-1 text-xs text-muted">الإطار المتقطع = من خارج المنصة (بالاسم فقط).</p>}
         {canManage && (
           <Button variant="secondary" className="mt-3 h-9 w-full" onClick={() => setEditing(true)}>
             تعديل المكلفين
@@ -517,13 +501,14 @@ export function AssigneesPanel({
   return (
     <div className="space-y-3">
       <fieldset className="space-y-1.5 text-sm">
-        <legend className="mb-1 text-xs text-muted">من يُكلَّف من موظفي المنصة؟</legend>
+        <legend className="mb-1 text-xs text-muted">من يُكلَّف بالمهمة؟</legend>
         {(['none', 'department', ...(isEd ? (['org'] as const) : [])] as Scope[]).map((v) => (
           <label key={v} className="flex items-center gap-2">
             <input type="radio" name="scope" className="accent-[var(--teal)]" checked={scope === v} onChange={() => setScope(v)} />
             {v === 'none' ? 'اختيار أشخاص بعينهم' : SCOPE_LABEL[v]}
           </label>
         ))}
+        {scope !== 'none' && <p className="text-xs text-muted">تظهر المهمة في «مهامي» لكل منهم، ولمن يُضاف لاحقًا.</p>}
       </fieldset>
       {scope === 'none' && (
         <>
@@ -564,43 +549,6 @@ export function AssigneesPanel({
           <p className="text-xs text-muted">التاج = المسؤول الرئيسي (اختياري).</p>
         </>
       )}
-      <div className="space-y-2 rounded-xl border border-dashed border-line p-3">
-        <p className="text-sm">
-          أشخاص من خارج المنصة <span className="block text-xs text-muted">يُكتب الاسم فقط، دون حساب أو صلاحية دخول.</span>
-        </p>
-        <div className="flex gap-2">
-          <Input
-            className="h-9 flex-1 text-sm"
-            value={extName}
-            maxLength={120}
-            onChange={(e) => setExtName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addExt();
-              }
-            }}
-            placeholder="اسم الشخص"
-            aria-label="اسم شخص من خارج المنصة"
-          />
-          <Button variant="secondary" className="h-9 px-3 text-xs" disabled={!extName.trim()} onClick={addExt}>
-            إضافة
-          </Button>
-        </div>
-        {ext.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5">
-            {ext.map((n) => (
-              <li key={n} className="inline-flex items-center gap-1 rounded-full border border-dashed border-line px-2 py-1 text-xs">
-                {n}
-                <button type="button" aria-label={`إزالة ${n}`} onClick={() => setExt(ext.filter((x) => x !== n))}>
-                  <X size={12} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {mode === 'individual' && ext.length > 0 && <p className="text-xs text-muted">في المهمة الفردية يُحتسب الإنجاز على موظفي المنصة فقط.</p>}
-      </div>
       <fieldset className="space-y-1.5 rounded-xl bg-sunken p-3 text-sm">
         <legend className="sr-only">نوع الإسناد</legend>
         <label className={cn('flex items-start gap-2', started && mode !== 'shared' && 'opacity-50')}>
@@ -627,7 +575,7 @@ export function AssigneesPanel({
       <div className="flex gap-2">
         <Button
           className="h-9 flex-1"
-          disabled={pending || (scope === 'none' && sel.length === 0 && ext.length === 0 && assignees.length === 0 && ext0.length === 0)}
+          disabled={pending || (scope === 'none' && sel.length === 0 && assignees.length === 0)}
           onClick={() =>
             run(
               () =>
@@ -638,7 +586,6 @@ export function AssigneesPanel({
                   mode,
                   threshold: Math.min(100, Math.max(1, threshold || 100)),
                   scope,
-                  external: ext,
                 }),
               () => setEditing(false),
             )

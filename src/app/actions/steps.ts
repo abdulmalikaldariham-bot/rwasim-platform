@@ -150,7 +150,7 @@ export async function setDatesAction(stepId: string, start: string | null, end: 
   return { ok: true, message: start ? 'حُفظت التواريخ' : 'أعيدت التواريخ إلى الجدولة الأسبوعية' };
 }
 
-export async function setAssigneesAction(input: { stepId: string; users: string[]; lead: string | null; mode: 'shared' | 'individual'; threshold: number; scope: 'none' | 'department' | 'org'; external: string[] }): Promise<ActionResult> {
+export async function setAssigneesAction(input: { stepId: string; users: string[]; lead: string | null; mode: 'shared' | 'individual'; threshold: number; scope: 'none' | 'department' | 'org' }): Promise<ActionResult> {
   const sb = await createClient();
   const { data, error } = await sb.rpc('set_step_assignees', {
     p_step: input.stepId,
@@ -160,7 +160,6 @@ export async function setAssigneesAction(input: { stepId: string; users: string[
     p_threshold: input.threshold,
     p_all: input.scope !== 'none',
     p_scope: input.scope,
-    p_external: input.external.map((n) => n.trim()).filter(Boolean),
   });
   if (error) return { ok: false, error: errMsg(error) };
   revalidatePath('/', 'layout');

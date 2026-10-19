@@ -179,7 +179,6 @@ export default async function TaskPage({ params, searchParams }: { params: Promi
               mode={s.assignment_mode}
               threshold={s.completion_threshold}
               scope={s.assign_scope}
-              external={s.external_assignees}
               isEd={isEd}
               people={people}
               canManage={canManage}
